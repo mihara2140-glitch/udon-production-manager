@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import ttk
 
 from screens.data import open_data_window
 from screens.finish import open_finish_window
@@ -10,71 +11,121 @@ from screens.recipe_history import open_recipe_history_window
 from screens.recipe_search import open_recipe_search_window
 from screens.start import open_start_window
 
-# -------------------------
-# ウィンドウ
-# -------------------------
+
 window = tk.Tk()
-window.title("製麺管理アプリ Ver.19")
-window.geometry("400x450")
+window.title("製麺管理アプリ Ver.20")
+window.geometry("760x640")
+window.minsize(700, 580)
 
+style = ttk.Style(window)
+style.configure("AppTitle.TLabel", font=("Meiryo", 22, "bold"))
+style.configure("Subtitle.TLabel", font=("Meiryo", 10))
+style.configure("Section.TLabelframe.Label", font=("Meiryo", 12, "bold"))
+style.configure("Main.TButton", font=("Meiryo", 11, "bold"), padding=12)
+style.configure("Sub.TButton", font=("Meiryo", 10), padding=9)
 
-# タイトル
-title = tk.Label(window, text="製麺管理アプリ", font=("Meiryo", 18))
-title.pack(pady=15)
+root = ttk.Frame(window, padding=22)
+root.pack(fill="both", expand=True)
 
+header = ttk.Frame(root)
+header.pack(fill="x", pady=(0, 18))
 
-# ボタン
+text_area = ttk.Frame(header)
+text_area.pack(side="left", fill="x", expand=True)
 
+ttk.Label(text_area, text="製麺管理アプリ", style="AppTitle.TLabel").pack(anchor="w")
+ttk.Label(
+    text_area,
+    text="記録・配合・評価をひとつにまとめて、製麺の再現性を高める。",
+    style="Subtitle.TLabel",
+).pack(anchor="w", pady=(3, 0))
 
-(
-    tk.Button(
-        window, text="データを見る", width=20, command=lambda: open_data_window(window)
-    ).pack(pady=5),
-)
+ttk.Label(header, text="Ver.20").pack(side="right", anchor="n", pady=7)
 
+# 今日の製麺
+seimen_frame = ttk.LabelFrame(root, text=" 今日の製麺 ", padding=14, style="Section.TLabelframe")
+seimen_frame.pack(fill="x", pady=(0, 14))
+seimen_frame.columnconfigure((0, 1), weight=1)
 
-tk.Button(
-    window, text="製麺開始", width=20, command=lambda: open_start_window(window)
-).pack(pady=5)
+ttk.Button(
+    seimen_frame,
+    text="▶  製麺を開始",
+    style="Main.TButton",
+    command=lambda: open_start_window(window),
+).grid(row=0, column=0, sticky="ew", padx=(0, 7), pady=4)
 
-tk.Button(
-    window, text="製麺終了", width=20, command=lambda: open_finish_window(window)
-).pack(pady=5)
+ttk.Button(
+    seimen_frame,
+    text="✓  製麺を終了・評価",
+    style="Main.TButton",
+    command=lambda: open_finish_window(window),
+).grid(row=0, column=1, sticky="ew", padx=(7, 0), pady=4)
 
-tk.Button(
-    window,
-    text="湿度70%以上検索",
-    width=20,
+# 記録
+record_frame = ttk.LabelFrame(root, text=" 記録を見る ", padding=14, style="Section.TLabelframe")
+record_frame.pack(fill="x", pady=(0, 14))
+record_frame.columnconfigure((0, 1, 2), weight=1)
+
+ttk.Button(
+    record_frame,
+    text="製麺記録",
+    style="Sub.TButton",
+    command=lambda: open_data_window(window),
+).grid(row=0, column=0, sticky="ew", padx=5, pady=4)
+
+ttk.Button(
+    record_frame,
+    text="湿度70%以上",
+    style="Sub.TButton",
     command=lambda: open_humidity_window(window),
-).pack(pady=5)
+).grid(row=0, column=1, sticky="ew", padx=5, pady=4)
 
-tk.Button(
-    window, text="配合計算", width=20, command=lambda: open_recipe_calc_window(window)
-).pack(pady=5)
+ttk.Button(
+    record_frame,
+    text="配合から検索",
+    style="Sub.TButton",
+    command=lambda: open_recipe_search_window(window),
+).grid(row=0, column=2, sticky="ew", padx=5, pady=4)
 
-tk.Button(
-    window,
-    text="配合履歴を見る",
-    width=20,
-    command=lambda: open_recipe_history_window(window),
-).pack(pady=5)
+# 配合・粉
+recipe_frame = ttk.LabelFrame(root, text=" 配合・粉の管理 ", padding=14, style="Section.TLabelframe")
+recipe_frame.pack(fill="x", pady=(0, 14))
+recipe_frame.columnconfigure((0, 1), weight=1)
 
-tk.Button(
-    window, text="粉銘柄一覧を見る", width=20, command=lambda: open_flour_window(window)
-).pack(pady=5)
+buttons = [
+    ("配合計算", lambda: open_recipe_calc_window(window)),
+    ("配合履歴", lambda: open_recipe_history_window(window)),
+    ("粉銘柄一覧", lambda: open_flour_window(window)),
+    ("粉銘柄を登録", lambda: open_flour_register_window(window)),
+]
 
-tk.Button(
-    window,
-    text="粉銘柄を登録する",
-    width=20,
-    command=lambda: open_flour_register_window(window),
-).pack(pady=5)
+for index, (label, command) in enumerate(buttons):
+    row = index // 2
+    column = index % 2
+    ttk.Button(recipe_frame, text=label, style="Sub.TButton", command=command).grid(
+        row=row,
+        column=column,
+        sticky="ew",
+        padx=5,
+        pady=5,
+    )
 
-tk.Button(
-    window, text="配合検索", width=20, command=lambda: open_recipe_search_window(window)
-).pack(pady=5)
+# 将来の分析機能を見据えた案内
+analysis_frame = ttk.LabelFrame(root, text=" 分析 ", padding=14, style="Section.TLabelframe")
+analysis_frame.pack(fill="x", pady=(0, 14))
 
-tk.Button(window, text="終了", width=20, command=window.destroy).pack(pady=20)
+ttk.Label(
+    analysis_frame,
+    text=(
+        "Ver.21以降で SQLite / pandas を使い、加水率・湿度・熟成時間・評価の関係を"
+        "グラフ化していきます。"
+    ),
+    wraplength=650,
+).pack(anchor="w")
 
+footer = ttk.Frame(root)
+footer.pack(fill="x", pady=(6, 0))
+
+ttk.Button(footer, text="終了", command=window.destroy).pack(side="right")
 
 window.mainloop()
