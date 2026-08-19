@@ -45,7 +45,8 @@ ttk.Label(header, text="Ver.20").pack(side="right", anchor="n", pady=7)
 # 今日の製麺
 seimen_frame = ttk.LabelFrame(root, text=" 今日の製麺 ", padding=14, style="Section.TLabelframe")
 seimen_frame.pack(fill="x", pady=(0, 14))
-seimen_frame.columnconfigure((0, 1), weight=1)
+for column in range(2):
+    seimen_frame.columnconfigure(column, weight=1)
 
 ttk.Button(
     seimen_frame,
@@ -64,7 +65,8 @@ ttk.Button(
 # 記録
 record_frame = ttk.LabelFrame(root, text=" 記録を見る ", padding=14, style="Section.TLabelframe")
 record_frame.pack(fill="x", pady=(0, 14))
-record_frame.columnconfigure((0, 1, 2), weight=1)
+for column in range(3):
+    record_frame.columnconfigure(column, weight=1)
 
 ttk.Button(
     record_frame,
@@ -90,7 +92,8 @@ ttk.Button(
 # 配合・粉
 recipe_frame = ttk.LabelFrame(root, text=" 配合・粉の管理 ", padding=14, style="Section.TLabelframe")
 recipe_frame.pack(fill="x", pady=(0, 14))
-recipe_frame.columnconfigure((0, 1), weight=1)
+for column in range(2):
+    recipe_frame.columnconfigure(column, weight=1)
 
 buttons = [
     ("配合計算", lambda: open_recipe_calc_window(window)),
