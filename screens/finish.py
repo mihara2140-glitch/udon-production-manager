@@ -9,8 +9,8 @@ def open_finish_window(parent):
 
     new_window = tk.Toplevel(parent)
     new_window.title("製麺終了 - Ver.20")
-    new_window.geometry("980x680")
-    new_window.minsize(900, 620)
+    new_window.geometry("1000x720")
+    new_window.minsize(900, 640)
 
     style = ttk.Style(new_window)
     style.configure("Title.TLabel", font=("Meiryo", 18, "bold"))
@@ -20,11 +20,19 @@ def open_finish_window(parent):
     outer = ttk.Frame(new_window, padding=18)
     outer.pack(fill="both", expand=True)
 
-    ttk.Label(outer, text="製麺を終了して評価を記録", style="Title.TLabel").pack(anchor="w")
+    header = ttk.Frame(outer)
+    header.pack(fill="x", pady=(0, 12))
+
+    title_area = ttk.Frame(header)
+    title_area.pack(side="left", fill="x", expand=True)
+    ttk.Label(title_area, text="製麺を終了して評価を記録", style="Title.TLabel").pack(anchor="w")
     ttk.Label(
-        outer,
-        text="食感や扱いやすさを1〜10で記録すると、今後の分析に使えます。",
-    ).pack(anchor="w", pady=(4, 14))
+        title_area,
+        text="熟成時間・茹で時間・食感評価を、実績としてまとめて記録します。",
+    ).pack(anchor="w", pady=(4, 0))
+
+    action_area = ttk.Frame(header)
+    action_area.pack(side="right", padx=(16, 0))
 
     body = ttk.Frame(outer)
     body.pack(fill="both", expand=True)
@@ -41,17 +49,32 @@ def open_finish_window(parent):
     working_card.rowconfigure(0, weight=1)
     working_card.columnconfigure(0, weight=1)
 
-    ttk.Label(input_card, text="製麺番号").grid(row=0, column=0, sticky="w", pady=6)
+    row = 0
+    ttk.Label(input_card, text="製麺番号").grid(row=row, column=0, sticky="w", pady=5)
     seimen_entry = ttk.Entry(input_card, width=16)
-    seimen_entry.grid(row=0, column=1, sticky="ew", pady=6)
+    seimen_entry.grid(row=row, column=1, sticky="ew", pady=5)
 
-    ttk.Label(input_card, text="茹で時間").grid(row=1, column=0, sticky="w", pady=6)
+    row += 1
+    ttk.Label(input_card, text="常温熟成時間").grid(row=row, column=0, sticky="w", pady=5)
+    room_maturation_entry = ttk.Entry(input_card, width=16)
+    room_maturation_entry.grid(row=row, column=1, sticky="ew", pady=5)
+
+    row += 1
+    ttk.Label(input_card, text="冷蔵熟成時間").grid(row=row, column=0, sticky="w", pady=5)
+    cold_maturation_entry = ttk.Entry(input_card, width=16)
+    cold_maturation_entry.grid(row=row, column=1, sticky="ew", pady=5)
+
+    row += 1
+    ttk.Label(input_card, text="茹で時間").grid(row=row, column=0, sticky="w", pady=5)
     boil_entry = ttk.Entry(input_card, width=16)
-    boil_entry.grid(row=1, column=1, sticky="ew", pady=6)
+    boil_entry.grid(row=row, column=1, sticky="ew", pady=5)
 
-    ttk.Separator(input_card).grid(row=2, column=0, columnspan=2, sticky="ew", pady=12)
+    row += 1
+    ttk.Separator(input_card).grid(row=row, column=0, columnspan=2, sticky="ew", pady=10)
+
+    row += 1
     ttk.Label(input_card, text="評価（1〜10）", style="Section.TLabel").grid(
-        row=3, column=0, columnspan=2, sticky="w", pady=(0, 6)
+        row=row, column=0, columnspan=2, sticky="w", pady=(0, 5)
     )
 
     evaluation_labels = [
@@ -65,27 +88,30 @@ def open_finish_window(parent):
     ]
 
     evaluation_entries = {}
-    for index, label in enumerate(evaluation_labels, start=4):
-        ttk.Label(input_card, text=label).grid(row=index, column=0, sticky="w", pady=4)
+    for label in evaluation_labels:
+        row += 1
+        ttk.Label(input_card, text=label).grid(row=row, column=0, sticky="w", pady=3)
         spinbox = ttk.Spinbox(input_card, from_=1, to=10, width=8)
-        spinbox.grid(row=index, column=1, sticky="w", pady=4)
+        spinbox.grid(row=row, column=1, sticky="w", pady=3)
         evaluation_entries[label] = spinbox
 
-    memo_row = 4 + len(evaluation_labels)
+    row += 1
     ttk.Label(input_card, text="感想・メモ", style="Section.TLabel").grid(
-        row=memo_row, column=0, columnspan=2, sticky="w", pady=(14, 6)
+        row=row, column=0, columnspan=2, sticky="w", pady=(10, 5)
     )
 
+    row += 1
     comment = tk.Text(
         input_card,
         width=44,
-        height=7,
+        height=5,
         wrap="word",
         font=("Meiryo", 10),
         padx=8,
         pady=8,
     )
-    comment.grid(row=memo_row + 1, column=0, columnspan=2, sticky="nsew")
+    comment.grid(row=row, column=0, columnspan=2, sticky="nsew")
+    input_card.rowconfigure(row, weight=1)
 
     working_box = tk.Text(
         working_card,
@@ -105,13 +131,12 @@ def open_finish_window(parent):
     scrollbar.grid(row=0, column=1, sticky="ns")
     working_box.config(yscrollcommand=scrollbar.set)
 
-    buttons = ttk.Frame(outer)
-    buttons.pack(fill="x", pady=(16, 0))
-
     def save():
         try:
             save_finish_data(
                 seimen_entry,
+                room_maturation_entry,
+                cold_maturation_entry,
                 boil_entry,
                 evaluation_entries,
                 comment,
@@ -121,9 +146,10 @@ def open_finish_window(parent):
         except (ValueError, IndexError) as error:
             messagebox.showerror("入力エラー", str(error), parent=new_window)
 
-    ttk.Button(buttons, text="保存して完了", command=save, style="Primary.TButton").pack(
-        side="left"
-    )
-    ttk.Button(buttons, text="キャンセル", command=new_window.destroy).pack(
-        side="right"
-    )
+    ttk.Button(
+        action_area,
+        text="保存して完了",
+        command=save,
+        style="Primary.TButton",
+    ).pack(side="left", padx=(0, 8))
+    ttk.Button(action_area, text="閉じる", command=new_window.destroy).pack(side="left")
