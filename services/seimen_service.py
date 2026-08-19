@@ -32,8 +32,6 @@ def _normalize_row(row):
         return row[: len(HEADER)]
 
     if len(row) >= 8:
-        # 旧形式:
-        # 製麺番号, 配合番号, 日付, 気温, 湿度, 茹で時間, 感想, 状態
         return [
             row[0],
             row[1],
@@ -58,7 +56,6 @@ def _normalize_row(row):
 
 
 def ensure_ver20_format():
-    """CSVをVer.20形式へ安全に揃える。既存データは保持する。"""
     DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
 
     if not DATA_FILE.exists():
@@ -90,21 +87,11 @@ def _write_rows(rows):
         csv.writer(file).writerows(rows)
 
 
-def save_start_data(
-    recipe_entry,
-    date_entry,
-    temp_entry,
-    humidity_entry,
-    room_maturation_entry,
-    cold_maturation_entry,
-    new_window,
-):
+def save_start_data(recipe_entry, date_entry, temp_entry, humidity_entry, new_window):
     recipe_no = recipe_entry.get().strip()
     record_date = date_entry.get().strip()
     temp = temp_entry.get().strip()
     humidity = humidity_entry.get().strip()
-    room_maturation = room_maturation_entry.get().strip()
-    cold_maturation = cold_maturation_entry.get().strip()
 
     if not recipe_no:
         raise ValueError("配合番号を入力してください。")
@@ -119,8 +106,8 @@ def save_start_data(
             record_date,
             temp,
             humidity,
-            room_maturation,
-            cold_maturation,
+            "",
+            "",
             "",
             "",
             "",
@@ -157,8 +144,6 @@ def show_working_list():
         text += f"製麺番号：{data[0]}\n"
         text += f"日付：{data[2]}\n"
         text += f"気温 / 湿度：{data[3]}℃ / {data[4]}%\n"
-        text += f"常温熟成：{data[5] or '-'}\n"
-        text += f"冷蔵熟成：{data[6] or '-'}\n"
         text += f"配合番号：{recipe_no}\n"
         text += (
             f"薄力 {recipe[3]}g（{weak_name}） / "
@@ -176,12 +161,16 @@ def show_working_list():
 
 def save_finish_data(
     seimen_entry,
+    room_maturation_entry,
+    cold_maturation_entry,
     boil_entry,
     evaluation_entries,
     comment,
     new_window,
 ):
     seimen_no = int(seimen_entry.get().strip())
+    room_maturation = room_maturation_entry.get().strip()
+    cold_maturation = cold_maturation_entry.get().strip()
     boil = boil_entry.get().strip()
     memo = comment.get("1.0", "end").strip().replace("\n", " / ")
 
@@ -201,6 +190,8 @@ def save_finish_data(
 
     for data in rows[1:]:
         if int(data[0]) == seimen_no and data[16] == "作業中":
+            data[5] = room_maturation
+            data[6] = cold_maturation
             data[7] = boil
             data[8] = scores["総合評価"]
             data[9] = scores["ツル感"]
