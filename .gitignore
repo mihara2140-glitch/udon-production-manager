@@ -1,0 +1,17 @@
+# 製麺データ
+data/
+
+# バックアップ
+backup/
+
+# Pythonが自動生成するファイル
+__pycache__/
+*.pyc
+
+# ZIP
+*.zip
+
+# SQLiteデータベース（今後用）
+*.db
+*.sqlite
+*.sqlite3
