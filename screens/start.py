@@ -1,70 +1,117 @@
 import tkinter as tk
 from datetime import date
+from tkinter import messagebox, ttk
 
 from services.recipe_service import show_recipe_list
 from services.seimen_service import save_start_data
 
 
 def open_start_window(parent):
-
     recipe_text = show_recipe_list()
+
     new_window = tk.Toplevel(parent)
-    new_window.title("製麺開始")
-    new_window.geometry("750x500")
+    new_window.title("製麺開始 - Ver.20")
+    new_window.geometry("900x600")
+    new_window.minsize(820, 540)
 
-    tk.Label(new_window, text="日付").grid(
-        row=0, column=0, padx=10, pady=10, sticky="w"
+    style = ttk.Style(new_window)
+    style.configure("Title.TLabel", font=("Meiryo", 18, "bold"))
+    style.configure("Section.TLabel", font=("Meiryo", 11, "bold"))
+    style.configure("Primary.TButton", font=("Meiryo", 11, "bold"), padding=8)
+
+    outer = ttk.Frame(new_window, padding=18)
+    outer.pack(fill="both", expand=True)
+
+    ttk.Label(outer, text="今日の製麺を開始", style="Title.TLabel").pack(anchor="w")
+    ttk.Label(
+        outer,
+        text="環境・配合・熟成条件を記録します。時間は『1.5h』『90分』など自由に入力できます。",
+    ).pack(anchor="w", pady=(4, 14))
+
+    body = ttk.Frame(outer)
+    body.pack(fill="both", expand=True)
+    body.columnconfigure(0, weight=1)
+    body.columnconfigure(1, weight=1)
+    body.rowconfigure(0, weight=1)
+
+    input_card = ttk.LabelFrame(body, text=" 製麺条件 ", padding=16)
+    input_card.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+    input_card.columnconfigure(1, weight=1)
+
+    recipe_card = ttk.LabelFrame(body, text=" 配合一覧 ", padding=12)
+    recipe_card.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
+    recipe_card.rowconfigure(0, weight=1)
+    recipe_card.columnconfigure(0, weight=1)
+
+    fields = [
+        ("日付", date.today().strftime("%Y-%m-%d")),
+        ("気温（℃）", ""),
+        ("湿度（%）", ""),
+        ("配合番号", ""),
+        ("常温熟成時間", ""),
+        ("冷蔵熟成時間", ""),
+    ]
+
+    entries = {}
+    for row, (label, default) in enumerate(fields):
+        ttk.Label(input_card, text=label).grid(
+            row=row, column=0, sticky="w", padx=(0, 12), pady=8
+        )
+        entry = ttk.Entry(input_card, width=24)
+        entry.grid(row=row, column=1, sticky="ew", pady=8)
+        if default:
+            entry.insert(0, default)
+        entries[label] = entry
+
+    ttk.Separator(input_card).grid(
+        row=len(fields), column=0, columnspan=2, sticky="ew", pady=14
     )
 
-    today = date.today().strftime("%Y-%m-%d")  # noqa: DTZ011
+    ttk.Label(
+        input_card,
+        text="例：常温 1.5h / 冷蔵 16h\n熟成しない場合は 0h と入力",
+        foreground="#555555",
+    ).grid(row=len(fields) + 1, column=0, columnspan=2, sticky="w")
 
-    date_entry = tk.Entry(new_window)
-
-    date_entry.insert(0, today)
-
-    date_entry.grid(row=0, column=1, padx=10, pady=10)
-
-    tk.Label(new_window, text="気温").grid(
-        row=1, column=0, padx=10, pady=10, sticky="w"
+    recipe_box = tk.Text(
+        recipe_card,
+        width=48,
+        height=25,
+        wrap="word",
+        font=("Meiryo", 10),
+        relief="flat",
+        padx=8,
+        pady=8,
     )
-
-    temp_entry = tk.Entry(new_window)
-
-    temp_entry.grid(row=1, column=1, padx=10, pady=10)
-
-    tk.Label(new_window, text="湿度").grid(
-        row=2, column=0, padx=10, pady=10, sticky="w"
-    )
-
-    humidity_entry = tk.Entry(new_window)
-
-    humidity_entry.grid(row=2, column=1, padx=10, pady=10)
-
-    tk.Label(new_window, text="配合番号").grid(
-        row=3, column=0, padx=10, pady=10, sticky="w"
-    )
-
-    recipe_entry = tk.Entry(new_window)
-
-    recipe_entry.grid(row=3, column=1, padx=10, pady=10)
-
-    recipe_box = tk.Text(new_window, width=45, height=25)
-    recipe_box.grid(row=0, column=2, rowspan=6, padx=20, pady=10)
+    recipe_box.grid(row=0, column=0, sticky="nsew")
     recipe_box.insert("1.0", recipe_text)
-    recipe_box.configstate = "disabled"
+    recipe_box.config(state="disabled")
 
-    scrollbar = tk.Scrollbar(new_window, command=recipe_box.yview)
-    scrollbar.grid(row=0, column=3, rowspan=6, sticky="ns")
+    scrollbar = ttk.Scrollbar(recipe_card, command=recipe_box.yview)
+    scrollbar.grid(row=0, column=1, sticky="ns")
     recipe_box.config(yscrollcommand=scrollbar.set)
 
-    tk.Button(
-        new_window,
-        text="保存",
-        command=lambda: save_start_data(
-            recipe_entry, date_entry, temp_entry, humidity_entry, new_window
-        ),
-    ).grid(row=6, column=0, pady=10)
+    buttons = ttk.Frame(outer)
+    buttons.pack(fill="x", pady=(16, 0))
 
-    tk.Button(new_window, text="閉じる", command=new_window.destroy).grid(
-        row=6, column=1, pady=10
+    def save():
+        try:
+            save_start_data(
+                entries["配合番号"],
+                entries["日付"],
+                entries["気温（℃）"],
+                entries["湿度（%）"],
+                entries["常温熟成時間"],
+                entries["冷蔵熟成時間"],
+                new_window,
+            )
+            messagebox.showinfo("保存完了", "製麺を開始しました。", parent=parent)
+        except (ValueError, IndexError) as error:
+            messagebox.showerror("入力エラー", str(error), parent=new_window)
+
+    ttk.Button(buttons, text="製麺を開始", command=save, style="Primary.TButton").pack(
+        side="left"
+    )
+    ttk.Button(buttons, text="キャンセル", command=new_window.destroy).pack(
+        side="right"
     )
