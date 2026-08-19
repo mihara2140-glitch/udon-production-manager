@@ -11,12 +11,11 @@ def open_start_window(parent):
 
     new_window = tk.Toplevel(parent)
     new_window.title("製麺開始 - Ver.20")
-    new_window.geometry("900x600")
-    new_window.minsize(820, 540)
+    new_window.geometry("900x560")
+    new_window.minsize(820, 520)
 
     style = ttk.Style(new_window)
     style.configure("Title.TLabel", font=("Meiryo", 18, "bold"))
-    style.configure("Section.TLabel", font=("Meiryo", 11, "bold"))
     style.configure("Primary.TButton", font=("Meiryo", 11, "bold"), padding=8)
 
     outer = ttk.Frame(new_window, padding=18)
@@ -25,7 +24,7 @@ def open_start_window(parent):
     ttk.Label(outer, text="今日の製麺を開始", style="Title.TLabel").pack(anchor="w")
     ttk.Label(
         outer,
-        text="環境・配合・熟成条件を記録します。時間は『1.5h』『90分』など自由に入力できます。",
+        text="開始時点で分かる環境と配合を記録します。熟成時間は製麺終了時に実績を入力します。",
     ).pack(anchor="w", pady=(4, 14))
 
     body = ttk.Frame(outer)
@@ -48,35 +47,34 @@ def open_start_window(parent):
         ("気温（℃）", ""),
         ("湿度（%）", ""),
         ("配合番号", ""),
-        ("常温熟成時間", ""),
-        ("冷蔵熟成時間", ""),
     ]
 
     entries = {}
     for row, (label, default) in enumerate(fields):
         ttk.Label(input_card, text=label).grid(
-            row=row, column=0, sticky="w", padx=(0, 12), pady=8
+            row=row, column=0, sticky="w", padx=(0, 12), pady=10
         )
         entry = ttk.Entry(input_card, width=24)
-        entry.grid(row=row, column=1, sticky="ew", pady=8)
+        entry.grid(row=row, column=1, sticky="ew", pady=10)
         if default:
             entry.insert(0, default)
         entries[label] = entry
 
     ttk.Separator(input_card).grid(
-        row=len(fields), column=0, columnspan=2, sticky="ew", pady=14
+        row=len(fields), column=0, columnspan=2, sticky="ew", pady=18
     )
 
     ttk.Label(
         input_card,
-        text="例：常温 1.5h / 冷蔵 16h\n熟成しない場合は 0h と入力",
+        text="熟成時間は、実際に終了したタイミングで記録します。",
         foreground="#555555",
+        wraplength=320,
     ).grid(row=len(fields) + 1, column=0, columnspan=2, sticky="w")
 
     recipe_box = tk.Text(
         recipe_card,
         width=48,
-        height=25,
+        height=22,
         wrap="word",
         font=("Meiryo", 10),
         relief="flat",
@@ -101,8 +99,6 @@ def open_start_window(parent):
                 entries["日付"],
                 entries["気温（℃）"],
                 entries["湿度（%）"],
-                entries["常温熟成時間"],
-                entries["冷蔵熟成時間"],
                 new_window,
             )
             messagebox.showinfo("保存完了", "製麺を開始しました。", parent=parent)
@@ -112,6 +108,4 @@ def open_start_window(parent):
     ttk.Button(buttons, text="製麺を開始", command=save, style="Primary.TButton").pack(
         side="left"
     )
-    ttk.Button(buttons, text="キャンセル", command=new_window.destroy).pack(
-        side="right"
-    )
+    ttk.Button(buttons, text="閉じる", command=new_window.destroy).pack(side="right")
