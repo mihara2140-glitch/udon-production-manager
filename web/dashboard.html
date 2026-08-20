@@ -5,8 +5,86 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>製麺管理アプリ - Web</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .dashboard-page {
+            font-size: 15px;
+        }
+
+        .dashboard-page .brand-sub,
+        .dashboard-page .sidebar-footer {
+            color: #cbd5e1;
+        }
+
+        .dashboard-page .nav-item {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .dashboard-page .header-copy,
+        .dashboard-page .kpi-row span,
+        .dashboard-page .analysis-note,
+        .dashboard-page .mobile-hint p {
+            color: #4b5563;
+        }
+
+        .dashboard-page .header-copy {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .dashboard-page .kpi-label {
+            color: #4b5563;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .dashboard-page .kpi-note {
+            color: #59636f;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .dashboard-page th {
+            color: #4b5563;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .dashboard-page td {
+            color: #27313b;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .dashboard-page .quick-title {
+            font-size: 14px;
+        }
+
+        .dashboard-page .quick-copy {
+            color: #4b5563;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .dashboard-page .chart-y-label,
+        .dashboard-page .chart-x-label,
+        .dashboard-page .chart-tick {
+            color: #59636f;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .dashboard-page .analysis-note {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .dashboard-page .note-chip {
+            font-size: 12px;
+        }
+    </style>
 </head>
-<body>
+<body class="dashboard-page">
     <div class="app-shell">
         <aside class="sidebar">
             <div class="brand">
