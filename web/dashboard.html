@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>製麺管理アプリ - Web</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark">麺</div>
+                <div>
+                    <p class="brand-name">製麺管理</p>
+                    <p class="brand-sub">UDON MANAGER</p>
+                </div>
+            </div>
+
+            <nav class="nav-menu" aria-label="メインメニュー">
+                <a class="nav-item active" href="#dashboard">ダッシュボード</a>
+                <a class="nav-item" href="#start">製麺開始</a>
+                <a class="nav-item" href="#records">製麺記録</a>
+                <a class="nav-item" href="#recipes">配合管理</a>
+                <a class="nav-item" href="#flours">粉銘柄管理</a>
+                <a class="nav-item" href="#analysis">データ分析</a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <p>Web Version</p>
+                <span>SQLite Connected</span>
+            </div>
+        </aside>
+
+        <main class="main-content" id="dashboard">
+            <header class="page-header">
+                <div>
+                    <p class="eyebrow">DASHBOARD</p>
+                    <h1>製麺ダッシュボード</h1>
+                    <p class="header-copy">SQLiteに保存された実際の製麺データを表示しています。</p>
+                </div>
+                <button class="primary-button" type="button">＋ 製麺を開始</button>
+            </header>
+
+            <section class="kpi-grid" aria-label="製麺状況">
+                <article class="kpi-card">
+                    <p class="kpi-label">作業中</p>
+                    <div class="kpi-row">
+                        <strong>{{ working_count }}</strong>
+                        <span>件</span>
+                    </div>
+                    <p class="kpi-note">現在進行中の製麺</p>
+                </article>
+
+                <article class="kpi-card">
+                    <p class="kpi-label">直近の評価</p>
+                    <div class="kpi-row">
+                        <strong>{{ latest_score if latest_score is not none else '－' }}</strong>
+                        <span>/ 60</span>
+                    </div>
+                    <p class="kpi-note">最新の製麺記録</p>
+                </article>
+
+                <article class="kpi-card">
+                    <p class="kpi-label">直近の加水率</p>
+                    <div class="kpi-row">
+                        <strong>{{ latest_hydration if latest_hydration is not none else '－' }}</strong>
+                        <span>%</span>
+                    </div>
+                    <p class="kpi-note">最新の配合</p>
+                </article>
+
+                <article class="kpi-card">
+                    <p class="kpi-label">完了記録</p>
+                    <div class="kpi-row">
+                        <strong>{{ completed_count }}</strong>
+                        <span>件</span>
+                    </div>
+                    <p class="kpi-note">SQLite内の完了データ</p>
+                </article>
+            </section>
+
+            <section class="content-grid">
+                <article class="panel records-panel" id="records">
+                    <div class="panel-header">
+                        <div>
+                            <p class="panel-kicker">RECENT RECORDS</p>
+                            <h2>最近の製麺記録</h2>
+                        </div>
+                        <span class="text-link">最新6件</span>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>No.</th>
+                                    <th>日付</th>
+                                    <th>配合</th>
+                                    <th>加水率</th>
+                                    <th>気温 / 湿度</th>
+                                    <th>評価</th>
+                                    <th>状態</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in recent_records %}
+                                <tr>
+                                    <td><span class="record-no">{{ record['id'] }}</span></td>
+                                    <td>{{ record['record_date'] or '－' }}</td>
+                                    <td>{{ record['recipe_id'] }}</td>
+                                    <td>{{ record['hydration'] }}%</td>
+                                    <td>
+                                        {{ record['temperature'] if record['temperature'] is not none else '－' }}℃ /
+                                        {{ record['humidity'] if record['humidity'] is not none else '－' }}%
+                                    </td>
+                                    <td>
+                                        {% if record['total_score'] is not none %}
+                                        <span class="score-badge">{{ record['total_score'] }} / 60</span>
+                                        {% else %}
+                                        －
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ record['state'] }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="7">製麺記録はまだありません。</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+
+                <article class="panel quick-panel" id="start">
+                    <div class="panel-header">
+                        <div>
+                            <p class="panel-kicker">QUICK ACTION</p>
+                            <h2>よく使う操作</h2>
+                        </div>
+                    </div>
+
+                    <div class="quick-actions">
+                        <button type="button" class="quick-button">
+                            <span class="quick-title">製麺を開始</span>
+                            <span class="quick-copy">次のVerでWeb入力画面へ接続</span>
+                        </button>
+                        <button type="button" class="quick-button">
+                            <span class="quick-title">製麺を終了</span>
+                            <span class="quick-copy">熟成・評価の入力をWeb化予定</span>
+                        </button>
+                        <button type="button" class="quick-button" id="recipes">
+                            <span class="quick-title">配合を確認</span>
+                            <span class="quick-copy">SQLiteの配合一覧へ接続予定</span>
+                        </button>
+                    </div>
+                </article>
+            </section>
+
+            <section class="panel analysis-panel" id="analysis">
+                <div class="panel-header">
+                    <div>
+                        <p class="panel-kicker">ANALYSIS</p>
+                        <h2>分析機能</h2>
+                    </div>
+                    <button class="secondary-button" type="button">今後Webグラフへ接続</button>
+                </div>
+
+                <div class="chart-layout">
+                    <div class="chart-box" aria-label="分析グラフの配置予定エリア">
+                        <div class="chart-y-label">評価</div>
+                        <div class="chart-area">
+                            <span class="grid-line line-1"></span>
+                            <span class="grid-line line-2"></span>
+                            <span class="grid-line line-3"></span>
+                            <span class="chart-dot dot-1"></span>
+                            <span class="chart-dot dot-2"></span>
+                            <span class="chart-dot dot-3"></span>
+                        </div>
+                        <div class="chart-x-label">製麺条件</div>
+                    </div>
+
+                    <div class="analysis-note">
+                        <p class="analysis-note-title">ここからの進化</p>
+                        <p>Tkinter版で作ったpandas・matplotlib分析を、ブラウザで使いやすい形に置き換えていきます。</p>
+                        <div class="note-chip">Python → Web 接続済み</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="mobile-hint" id="flours">
+                <strong>現在のWeb版</strong>
+                <p>ダッシュボードの見た目＋SQLiteの読み取りまで接続済み。次は製麺開始フォームをWeb化します。</p>
+            </section>
+        </main>
+    </div>
+</body>
+</html>
