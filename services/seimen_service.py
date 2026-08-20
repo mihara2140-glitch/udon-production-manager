@@ -1,4 +1,9 @@
-from services.database_service import get_connection, initialize_database
+from services.database_service import (
+    get_connection,
+    initialize_database,
+    parse_hours,
+    parse_minutes,
+)
 from services.recipe_service import get_flour_name, get_recipe
 
 
@@ -13,6 +18,19 @@ def _score(entry, label):
     return score
 
 
+def _duration(entry, label, parser):
+    value = entry.get().strip()
+    if not value:
+        return None
+
+    result = parser(value)
+    if result is None:
+        raise ValueError(f"{label}を数値で入力してください。")
+    if result < 0:
+        raise ValueError(f"{label}は0以上で入力してください。")
+    return result
+
+
 def save_start_data(recipe_entry, date_entry, temp_entry, humidity_entry, new_window):
     initialize_database()
 
@@ -24,7 +42,6 @@ def save_start_data(recipe_entry, date_entry, temp_entry, humidity_entry, new_wi
     if not recipe_no:
         raise ValueError("配合番号を入力してください。")
 
-    # 配合番号が存在するか先に確認
     get_recipe(int(recipe_no))
 
     temperature = float(temp) if temp else None
@@ -97,15 +114,29 @@ def save_finish_data(
     initialize_database()
 
     seimen_no = int(seimen_entry.get().strip())
-    room_maturation = room_maturation_entry.get().strip()
-    cold_maturation = cold_maturation_entry.get().strip()
-    boil = boil_entry.get().strip()
+    room_hours = _duration(room_maturation_entry, "常温熟成時間", parse_hours)
+    cold_hours = _duration(cold_maturation_entry, "冷蔵熟成時間", parse_hours)
+    boil_minutes = _duration(boil_entry, "茹で時間", parse_minutes)
     memo = comment.get("1.0", "end").strip()
 
     scores = {
         label: _score(entry, label)
         for label, entry in evaluation_entries.items()
     }
+
+    score_values = [
+        scores["ツル感"],
+        scores["モチ感"],
+        scores["コシ"],
+        scores["のど越し"],
+        scores["くっつき"],
+        scores["タレとの相性"],
+    ]
+    total_score = sum(score_values) if all(v is not None for v in score_values) else None
+
+    room_text = f"{room_hours:g}h" if room_hours is not None else ""
+    cold_text = f"{cold_hours:g}h" if cold_hours is not None else ""
+    boil_text = f"{boil_minutes:g}分" if boil_minutes is not None else ""
 
     with get_connection() as conn:
         current = conn.execute(
@@ -122,6 +153,9 @@ def save_finish_data(
             SET room_maturation = ?,
                 cold_maturation = ?,
                 boil_time = ?,
+                room_maturation_hours = ?,
+                cold_maturation_hours = ?,
+                boil_minutes = ?,
                 total_score = ?,
                 smooth_score = ?,
                 chewy_score = ?,
@@ -134,10 +168,13 @@ def save_finish_data(
             WHERE id = ?
             """,
             (
-                room_maturation,
-                cold_maturation,
-                boil,
-                scores["総合評価"],
+                room_text,
+                cold_text,
+                boil_text,
+                room_hours,
+                cold_hours,
+                boil_minutes,
+                total_score,
                 scores["ツル感"],
                 scores["モチ感"],
                 scores["コシ"],
@@ -194,8 +231,9 @@ def show_data():
         text += f"茹で時間：{row['boil_time'] or '-'}\n"
 
         if row["state"] == "完了":
+            total = f"{row['total_score']}/60" if row["total_score"] is not None else "-"
             text += (
-                f"評価：総合 {row['total_score'] or '-'} / "
+                f"評価：総合 {total} / "
                 f"ツル {row['smooth_score'] or '-'} / "
                 f"モチ {row['chewy_score'] or '-'} / "
                 f"コシ {row['firmness_score'] or '-'} / "
