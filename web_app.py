@@ -3,6 +3,7 @@ from datetime import date
 from flask import Flask, redirect, render_template, request, url_for
 
 from services.database_service import get_connection, initialize_database
+from services.record_service import get_record_detail, get_record_list
 
 
 app = Flask(
@@ -139,9 +140,61 @@ def load_dashboard_data():
     }
 
 
+def _record_matches(record, search_type, keyword):
+    if not keyword:
+        return True
+
+    if search_type == "seimen_no":
+        return str(record["id"]) == keyword
+
+    if search_type == "recipe_no":
+        return str(record["recipe_id"]) == keyword
+
+    if search_type == "date":
+        return keyword in str(record["record_date"] or "")
+
+    return True
+
+
 @app.route("/")
 def dashboard():
     return render_template("dashboard.html", **load_dashboard_data())
+
+
+@app.route("/records")
+def records():
+    search_type = request.args.get("search_type", "seimen_no")
+    keyword = request.args.get("keyword", "").strip()
+    state = request.args.get("state", "すべて")
+    selected = request.args.get("selected", "").strip()
+
+    all_records = get_record_list()
+    visible_records = []
+
+    for record in all_records:
+        if state != "すべて" and record["state"] != state:
+            continue
+        if not _record_matches(record, search_type, keyword):
+            continue
+        visible_records.append(record)
+
+    detail = None
+    detail_error = None
+    if selected:
+        try:
+            detail = get_record_detail(selected)
+        except (ValueError, TypeError) as exc:
+            detail_error = str(exc)
+
+    return render_template(
+        "records.html",
+        records=visible_records,
+        detail=detail,
+        detail_error=detail_error,
+        search_type=search_type,
+        keyword=keyword,
+        state=state,
+    )
 
 
 @app.route("/start", methods=["GET", "POST"])
