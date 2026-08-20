@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>製麺記録 - 製麺管理アプリ</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='records.css') }}">
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark">麺</div>
+                <div>
+                    <p class="brand-name">製麺管理</p>
+                    <p class="brand-sub">UDON MANAGER</p>
+                </div>
+            </div>
+
+            <nav class="nav-menu" aria-label="メインメニュー">
+                <a class="nav-item" href="{{ url_for('dashboard') }}">ダッシュボード</a>
+                <a class="nav-item" href="{{ url_for('start_seimen') }}">製麺開始</a>
+                <a class="nav-item active" href="{{ url_for('records') }}">製麺記録</a>
+                <a class="nav-item" href="{{ url_for('dashboard') }}#recipes">配合管理</a>
+                <a class="nav-item" href="{{ url_for('dashboard') }}#flours">粉銘柄管理</a>
+                <a class="nav-item" href="{{ url_for('dashboard') }}#analysis">データ分析</a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <p>Web Version</p>
+                <span>SQLite Connected</span>
+            </div>
+        </aside>
+
+        <main class="main-content records-page">
+            <header class="page-header records-header">
+                <div>
+                    <p class="eyebrow">RECORDS</p>
+                    <h1>製麺記録</h1>
+                    <p class="header-copy">製麺No.・配合No.・日付で検索し、記録の詳細を確認できます。</p>
+                </div>
+                <a class="primary-link" href="{{ url_for('start_seimen') }}">＋ 製麺を開始</a>
+            </header>
+
+            <section class="panel search-panel">
+                <form class="record-search" method="get" action="{{ url_for('records') }}">
+                    <label class="compact-field">
+                        <span>検索対象</span>
+                        <select name="search_type">
+                            <option value="seimen_no" {% if search_type == 'seimen_no' %}selected{% endif %}>製麺No.</option>
+                            <option value="recipe_no" {% if search_type == 'recipe_no' %}selected{% endif %}>配合No.</option>
+                            <option value="date" {% if search_type == 'date' %}selected{% endif %}>日付</option>
+                        </select>
+                    </label>
+
+                    <label class="compact-field search-keyword">
+                        <span>検索</span>
+                        <input name="keyword" value="{{ keyword }}" placeholder="例：18 / 7 / 2026-08">
+                    </label>
+
+                    <label class="compact-field">
+                        <span>状態</span>
+                        <select name="state">
+                            <option value="すべて" {% if state == 'すべて' %}selected{% endif %}>すべて</option>
+                            <option value="完了" {% if state == '完了' %}selected{% endif %}>完了</option>
+                            <option value="作業中" {% if state == '作業中' %}selected{% endif %}>作業中</option>
+                        </select>
+                    </label>
+
+                    <div class="search-actions">
+                        <a class="secondary-link compact-button" href="{{ url_for('records') }}">クリア</a>
+                        <button class="primary-button compact-button" type="submit">検索</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="records-layout">
+                <article class="panel records-list-panel">
+                    <div class="panel-header">
+                        <div>
+                            <p class="panel-kicker">RECORD LIST</p>
+                            <h2>記録一覧 <span class="record-count">{{ records|length }}件</span></h2>
+                        </div>
+                    </div>
+
+                    <div class="table-wrap records-table-wrap">
+                        <table class="records-table">
+                            <thead>
+                                <tr>
+                                    <th>No.</th>
+                                    <th>日付</th>
+                                    <th>配合</th>
+                                    <th>加水率</th>
+                                    <th>気温 / 湿度</th>
+                                    <th>熟成</th>
+                                    <th>評価</th>
+                                    <th>状態</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in records %}
+                                <tr class="record-row {% if detail and detail['id'] == record['id'] %}selected-row{% endif %}">
+                                    <td>
+                                        <a class="record-link" href="{{ url_for('records', search_type=search_type, keyword=keyword, state=state, selected=record['id']) }}">
+                                            No.{{ record['id'] }}
+                                        </a>
+                                    </td>
+                                    <td>{{ record['record_date'] or '－' }}</td>
+                                    <td>No.{{ record['recipe_id'] }}</td>
+                                    <td>{{ record['hydration'] }}%</td>
+                                    <td>
+                                        {{ record['temperature'] if record['temperature'] is not none else '－' }}℃ /
+                                        {{ record['humidity'] if record['humidity'] is not none else '－' }}%
+                                    </td>
+                                    <td>
+                                        {{ record['room_maturation_hours'] if record['room_maturation_hours'] is not none else '－' }}h /
+                                        {{ record['cold_maturation_hours'] if record['cold_maturation_hours'] is not none else '－' }}h
+                                    </td>
+                                    <td>
+                                        {% if record['total_score'] is not none %}
+                                        <span class="score-badge">{{ record['total_score'] }}/60</span>
+                                        {% else %}
+                                        －
+                                        {% endif %}
+                                    </td>
+                                    <td><span class="state-badge state-{{ 'working' if record['state'] == '作業中' else 'done' }}">{{ record['state'] }}</span></td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="8" class="no-results">条件に合う製麺記録がありません。</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+
+                <aside class="panel record-detail-panel">
+                    <div class="panel-header">
+                        <div>
+                            <p class="panel-kicker">DETAIL</p>
+                            <h2>記録の詳細</h2>
+                        </div>
+                    </div>
+
+                    {% if detail_error %}
+                    <div class="error-box">{{ detail_error }}</div>
+                    {% elif detail %}
+                    <div class="detail-topline">
+                        <div>
+                            <span class="detail-no">No.{{ detail['id'] }}</span>
+                            <strong>{{ detail['record_date'] or '日付なし' }}</strong>
+                        </div>
+                        <span class="state-badge state-{{ 'working' if detail['state'] == '作業中' else 'done' }}">{{ detail['state'] }}</span>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>環境・配合</h3>
+                        <dl class="detail-grid">
+                            <div><dt>気温</dt><dd>{{ detail['temperature'] if detail['temperature'] is not none else '－' }}℃</dd></div>
+                            <div><dt>湿度</dt><dd>{{ detail['humidity'] if detail['humidity'] is not none else '－' }}%</dd></div>
+                            <div><dt>配合</dt><dd>No.{{ detail['recipe_id'] }}</dd></div>
+                            <div><dt>加水率</dt><dd>{{ detail['hydration'] }}%</dd></div>
+                            <div><dt>塩分濃度</dt><dd>{{ detail['salt_percent'] }}%</dd></div>
+                        </dl>
+                        <div class="flour-detail">
+                            <p><strong>薄力</strong> {{ detail['weak'] }}g / {{ detail['weak_name'] }}</p>
+                            <p><strong>中力</strong> {{ detail['medium'] }}g / {{ detail['medium_name'] }}</p>
+                            <p><strong>強力</strong> {{ detail['strong'] }}g / {{ detail['strong_name'] }}</p>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>熟成・茹で</h3>
+                        <dl class="detail-grid three-cols">
+                            <div><dt>常温</dt><dd>{{ detail['room_maturation_hours'] if detail['room_maturation_hours'] is not none else '－' }}h</dd></div>
+                            <div><dt>冷蔵</dt><dd>{{ detail['cold_maturation_hours'] if detail['cold_maturation_hours'] is not none else '－' }}h</dd></div>
+                            <div><dt>茹で</dt><dd>{{ detail['boil_minutes'] if detail['boil_minutes'] is not none else '－' }}分</dd></div>
+                        </dl>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>評価</h3>
+                        {% if detail['total_score'] is not none %}
+                        <div class="detail-total"><strong>{{ detail['total_score'] }}</strong><span>/60</span></div>
+                        {% endif %}
+                        <div class="score-detail-grid">
+                            <div><span>ツル</span><strong>{{ detail['smooth_score'] if detail['smooth_score'] is not none else '－' }}</strong></div>
+                            <div><span>モチ</span><strong>{{ detail['chewy_score'] if detail['chewy_score'] is not none else '－' }}</strong></div>
+                            <div><span>コシ</span><strong>{{ detail['firmness_score'] if detail['firmness_score'] is not none else '－' }}</strong></div>
+                            <div><span>のど越し</span><strong>{{ detail['throat_score'] if detail['throat_score'] is not none else '－' }}</strong></div>
+                            <div><span>くっつきにくさ</span><strong>{{ detail['sticking_score'] if detail['sticking_score'] is not none else '－' }}</strong></div>
+                            <div><span>タレ</span><strong>{{ detail['sauce_score'] if detail['sauce_score'] is not none else '－' }}</strong></div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section memo-section">
+                        <h3>メモ</h3>
+                        <p>{{ detail['memo'] or 'メモはありません。' }}</p>
+                    </div>
+                    {% else %}
+                    <div class="detail-empty">
+                        <strong>一覧からNo.を選択</strong>
+                        <p>選んだ製麺記録の配合・熟成・評価・メモをここに表示します。</p>
+                    </div>
+                    {% endif %}
+                </aside>
+            </section>
+        </main>
+    </div>
+</body>
+</html>
