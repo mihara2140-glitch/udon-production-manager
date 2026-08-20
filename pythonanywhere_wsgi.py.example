@@ -3,10 +3,16 @@
 
 import os
 import sys
+import time
 
 project_home = "/home/YOUR_USERNAME/udon-production-manager"
 if project_home not in sys.path:
     sys.path.insert(0, project_home)
+
+# PythonAnywhereのサーバーはUTCなので、日本時間へ合わせる。
+os.environ["TZ"] = "Asia/Tokyo"
+if hasattr(time, "tzset"):
+    time.tzset()
 
 os.environ["APP_PASSWORD"] = "SET_A_PRIVATE_PASSWORD"
 os.environ["FLASK_SECRET_KEY"] = "SET_A_LONG_RANDOM_SECRET"
