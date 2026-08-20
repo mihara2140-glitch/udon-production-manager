@@ -3,7 +3,10 @@ import re
 import sqlite3
 from pathlib import Path
 
-DATA_DIR = Path("data")
+# このファイルの場所を基準に、必ず製麺管理アプリ直下の data を参照する。
+# VS Code の作業フォルダや Google Drive の状態に左右されにくくするための指定。
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data"
 DB_FILE = DATA_DIR / "udon_manager.db"
 
 
