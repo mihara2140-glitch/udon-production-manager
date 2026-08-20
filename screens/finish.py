@@ -8,7 +8,7 @@ def open_finish_window(parent):
     working_text = show_working_list()
 
     new_window = tk.Toplevel(parent)
-    new_window.title("製麺終了 - Ver.20")
+    new_window.title("製麺終了 - Ver.21")
     new_window.geometry("1000x720")
     new_window.minsize(900, 640)
 
