@@ -89,12 +89,21 @@ def open_analysis_window(parent):
 
     def show_chart(chart_key):
         try:
+            from matplotlib import rcParams
             from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
             from matplotlib.figure import Figure
 
+            rcParams["font.family"] = "Meiryo"
             dataframe = load_analysis_dataframe()
-        except ModuleNotFoundError as error:
-            messagebox.showerror("分析機能の準備", str(error), parent=new_window)
+        except ModuleNotFoundError:
+            messagebox.showerror(
+                "分析機能の準備",
+                "pandas と matplotlib が必要です。\n\n"
+                "VS Codeのターミナルで\n"
+                "python -m pip install -r requirements.txt\n"
+                "を実行してください。",
+                parent=new_window,
+            )
             return
 
         chart = CHARTS[chart_key]
