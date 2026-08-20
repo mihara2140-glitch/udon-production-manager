@@ -41,14 +41,25 @@ def open_data_window(parent):
 
     filter_frame = ttk.LabelFrame(outer, text=" 検索・絞り込み ", padding=10)
     filter_frame.pack(fill="x", pady=(0, 12))
-    filter_frame.columnconfigure(1, weight=1)
+    filter_frame.columnconfigure(3, weight=1)
 
-    ttk.Label(filter_frame, text="検索").grid(row=0, column=0, sticky="w", padx=(0, 8))
+    ttk.Label(filter_frame, text="検索対象").grid(row=0, column=0, sticky="w", padx=(0, 8))
+    search_type_var = tk.StringVar(value="製麺No.")
+    search_type_combo = ttk.Combobox(
+        filter_frame,
+        textvariable=search_type_var,
+        values=["製麺No.", "配合No.", "日付"],
+        state="readonly",
+        width=11,
+    )
+    search_type_combo.grid(row=0, column=1, sticky="w", padx=(0, 12))
+
+    ttk.Label(filter_frame, text="検索").grid(row=0, column=2, sticky="w", padx=(0, 8))
     search_var = tk.StringVar()
     search_entry = ttk.Entry(filter_frame, textvariable=search_var)
-    search_entry.grid(row=0, column=1, sticky="ew", padx=(0, 16))
+    search_entry.grid(row=0, column=3, sticky="ew", padx=(0, 16))
 
-    ttk.Label(filter_frame, text="状態").grid(row=0, column=2, sticky="w", padx=(0, 8))
+    ttk.Label(filter_frame, text="状態").grid(row=0, column=4, sticky="w", padx=(0, 8))
     state_var = tk.StringVar(value="すべて")
     state_combo = ttk.Combobox(
         filter_frame,
@@ -57,10 +68,14 @@ def open_data_window(parent):
         state="readonly",
         width=10,
     )
-    state_combo.grid(row=0, column=3, sticky="w", padx=(0, 10))
+    state_combo.grid(row=0, column=5, sticky="w", padx=(0, 10))
 
-    ttk.Button(filter_frame, text="検索をクリア", command=lambda: search_var.set("")).grid(
-        row=0, column=4, sticky="e"
+    def clear_search():
+        search_var.set("")
+        search_type_var.set("製麺No.")
+
+    ttk.Button(filter_frame, text="検索をクリア", command=clear_search).grid(
+        row=0, column=6, sticky="e"
     )
 
     table_frame = ttk.LabelFrame(outer, text=" 記録一覧 ", padding=8)
@@ -169,8 +184,24 @@ def open_data_window(parent):
             f"メモ：{_display(data['memo'])}"
         )
 
+    def matches_search(record, keyword, search_type):
+        if not keyword:
+            return True
+
+        if search_type == "製麺No.":
+            return str(record["id"]) == keyword
+
+        if search_type == "配合No.":
+            return str(record["recipe_id"]) == keyword
+
+        if search_type == "日付":
+            return keyword in str(record["record_date"] or "")
+
+        return True
+
     def refresh_table(*_):
-        keyword = search_var.get().strip().lower()
+        keyword = search_var.get().strip()
+        search_type = search_type_var.get()
         selected_state = state_var.get()
 
         for item in tree.get_children():
@@ -181,14 +212,7 @@ def open_data_window(parent):
             if selected_state != "すべて" and record["state"] != selected_state:
                 continue
 
-            searchable = " ".join(
-                [
-                    str(record["id"]),
-                    str(record["record_date"] or ""),
-                    str(record["recipe_id"]),
-                ]
-            ).lower()
-            if keyword and keyword not in searchable:
+            if not matches_search(record, keyword, search_type):
                 continue
 
             room = _display(record["room_maturation_hours"], "h")
@@ -219,6 +243,8 @@ def open_data_window(parent):
         table_frame.configure(text=f" 記録一覧（{visible_count}件） ")
         if visible_count == 0:
             set_detail("条件に合う製麺記録がありません。")
+        elif keyword:
+            set_detail("一覧から記録を1件選んでください。")
 
     def reload_records():
         nonlocal all_records
@@ -232,10 +258,11 @@ def open_data_window(parent):
         set_detail(build_detail(selected[0]))
 
     ttk.Button(filter_frame, text="最新の状態に更新", command=reload_records).grid(
-        row=0, column=5, sticky="e", padx=(10, 0)
+        row=0, column=7, sticky="e", padx=(10, 0)
     )
 
     search_var.trace_add("write", refresh_table)
+    search_type_combo.bind("<<ComboboxSelected>>", refresh_table)
     state_combo.bind("<<ComboboxSelected>>", refresh_table)
     tree.bind("<<TreeviewSelect>>", on_select)
     tree.bind("<Double-1>", on_select)
