@@ -2,6 +2,7 @@ import csv
 import os
 import re
 import sqlite3
+from datetime import date as date_type
 from pathlib import Path
 
 # ローカルでは従来どおり製麺管理アプリ直下の data を使う。
@@ -20,6 +21,31 @@ def get_connection():
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+
+def normalize_record_date(value):
+    """製麺日を YYYY-MM-DD に統一する。例: 2026/8/6 -> 2026-08-06。"""
+    text = str(value or "").strip()
+    if not text:
+        return ""
+
+    # 2026/8/6, 2026-8-6, 2026.8.6 を受け付ける。
+    match = re.fullmatch(r"(\d{4})[./-](\d{1,2})[./-](\d{1,2})", text)
+    if match:
+        try:
+            year, month, day = (int(part) for part in match.groups())
+            return date_type(year, month, day).isoformat()
+        except ValueError:
+            return text
+
+    # 20260806 のような8桁表記も念のため対応。
+    if re.fullmatch(r"\d{8}", text):
+        try:
+            return date_type(int(text[:4]), int(text[4:6]), int(text[6:8])).isoformat()
+        except ValueError:
+            return text
+
+    return text
 
 
 def parse_hours(value):
@@ -80,7 +106,7 @@ def parse_minutes(value):
 
 
 def initialize_database():
-    """DBを準備し、CSV移行とVer.22用アップグレードを行う。"""
+    """DBを準備し、旧データを現在形式へ自動アップグレードする。"""
     with get_connection() as conn:
         conn.executescript(
             """
@@ -149,8 +175,9 @@ def initialize_database():
             )
 
         _backfill_ver22_values(conn)
+        _normalize_record_dates(conn)
         conn.execute(
-            "INSERT OR REPLACE INTO app_meta(key, value) VALUES('schema_version', '22')"
+            "INSERT OR REPLACE INTO app_meta(key, value) VALUES('schema_version', '23')"
         )
 
 
@@ -170,6 +197,18 @@ def _ensure_ver22_columns(conn):
         if column not in columns:
             conn.execute(
                 f"ALTER TABLE seimen_records ADD COLUMN {column} {data_type}"
+            )
+
+
+def _normalize_record_dates(conn):
+    """既存の製麺日を YYYY-MM-DD へ統一する。"""
+    rows = conn.execute("SELECT id, record_date FROM seimen_records").fetchall()
+    for row in rows:
+        normalized = normalize_record_date(row["record_date"])
+        if normalized != (row["record_date"] or ""):
+            conn.execute(
+                "UPDATE seimen_records SET record_date = ? WHERE id = ?",
+                (normalized, row["id"]),
             )
 
 
@@ -336,7 +375,7 @@ def _migrate_seimen(conn):
             (
                 int(row[0]),
                 int(row[1]),
-                row[2],
+                normalize_record_date(row[2]),
                 _to_float(row[3]),
                 _to_float(row[4]),
                 row[5],
