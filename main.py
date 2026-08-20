@@ -3,7 +3,7 @@ from tkinter import ttk
 
 from services.database_service import initialize_database
 
-# 起動時にSQLite DBを準備し、必要ならVer.22形式へ自動更新する。
+# 起動時にSQLite DBを準備する。
 initialize_database()
 
 from screens.analysis import open_analysis_window
@@ -19,7 +19,7 @@ from screens.start import open_start_window
 
 
 window = tk.Tk()
-window.title("製麺管理アプリ Ver.22")
+window.title("製麺管理アプリ Ver.23")
 window.geometry("760x680")
 window.minsize(700, 620)
 
@@ -42,11 +42,11 @@ text_area.pack(side="left", fill="x", expand=True)
 ttk.Label(text_area, text="製麺管理アプリ", style="AppTitle.TLabel").pack(anchor="w")
 ttk.Label(
     text_area,
-    text="記録・配合・評価をSQLiteで管理し、過去データから製麺の傾向を見る。",
+    text="記録を見やすく整理し、製麺・配合・分析へ迷わずアクセスする。",
     style="Subtitle.TLabel",
 ).pack(anchor="w", pady=(3, 0))
 
-ttk.Label(header, text="Ver.22 / Analysis", font=("Meiryo", 10, "bold")).pack(
+ttk.Label(header, text="Ver.23 / Usability", font=("Meiryo", 10, "bold")).pack(
     side="right", anchor="n", pady=7
 )
 
@@ -70,23 +70,6 @@ ttk.Button(
     command=lambda: open_finish_window(window),
 ).grid(row=0, column=1, sticky="ew", padx=(7, 0), pady=4)
 
-# 分析
-analysis_frame = ttk.LabelFrame(root, text=" 分析 ", padding=14, style="Section.TLabelframe")
-analysis_frame.pack(fill="x", pady=(0, 14))
-analysis_frame.columnconfigure(0, weight=1)
-
-ttk.Button(
-    analysis_frame,
-    text="📊  製麺データを分析",
-    style="Main.TButton",
-    command=lambda: open_analysis_window(window),
-).grid(row=0, column=0, sticky="ew", pady=4)
-
-ttk.Label(
-    analysis_frame,
-    text="湿度×くっつき / 常温熟成×コシ / 加水率×総合評価 をグラフで確認",
-).grid(row=1, column=0, sticky="w", pady=(4, 0))
-
 # 記録
 record_frame = ttk.LabelFrame(root, text=" 記録を見る ", padding=14, style="Section.TLabelframe")
 record_frame.pack(fill="x", pady=(0, 14))
@@ -95,8 +78,8 @@ for column in range(3):
 
 ttk.Button(
     record_frame,
-    text="製麺記録",
-    style="Sub.TButton",
+    text="製麺記録一覧",
+    style="Main.TButton",
     command=lambda: open_data_window(window),
 ).grid(row=0, column=0, sticky="ew", padx=5, pady=4)
 
@@ -113,6 +96,23 @@ ttk.Button(
     style="Sub.TButton",
     command=lambda: open_recipe_search_window(window),
 ).grid(row=0, column=2, sticky="ew", padx=5, pady=4)
+
+# 分析
+analysis_frame = ttk.LabelFrame(root, text=" 分析 ", padding=14, style="Section.TLabelframe")
+analysis_frame.pack(fill="x", pady=(0, 14))
+analysis_frame.columnconfigure(0, weight=1)
+
+ttk.Button(
+    analysis_frame,
+    text="📊  製麺データを分析",
+    style="Main.TButton",
+    command=lambda: open_analysis_window(window),
+).grid(row=0, column=0, sticky="ew", pady=4)
+
+ttk.Label(
+    analysis_frame,
+    text="湿度×くっつき / 常温熟成×コシ / 加水率×総合評価 をグラフで確認",
+).grid(row=1, column=0, sticky="w", pady=(4, 0))
 
 # 配合・粉
 recipe_frame = ttk.LabelFrame(root, text=" 配合・粉の管理 ", padding=14, style="Section.TLabelframe")
