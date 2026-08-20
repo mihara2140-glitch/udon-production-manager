@@ -15,7 +15,7 @@ app = Flask(
     static_folder="web",
     static_url_path="/static",
 )
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "local-development-secret-change-on-public")
+app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.urandom(32)
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
@@ -30,7 +30,7 @@ def require_login_when_public():
     """公開先でAPP_PASSWORDが設定されたときだけログインを必須にする。"""
     if not APP_PASSWORD:
         return None
-    if request.endpoint in {"login", "static"}:
+    if request.endpoint in {"login", "static", "health"}:
         return None
     if session.get("authenticated"):
         return None
@@ -223,12 +223,16 @@ def _sort_records(records, sort_by):
     if sort_by == "salt_asc":
         return sorted(records, key=lambda r: r["salt_percent"])
 
-    # 標準は新しい日付順。日付がない場合は最後へ。
     return sorted(
         records,
         key=lambda r: (r["record_date"] or "", r["id"]),
         reverse=True,
     )
+
+
+@app.route("/health")
+def health():
+    return {"status": "ok"}
 
 
 @app.route("/login", methods=["GET", "POST"])
