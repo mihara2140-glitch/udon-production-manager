@@ -40,20 +40,20 @@
             <section class="management-grid">
                 <article class="panel management-form-panel">
                     <div class="panel-header"><div><p class="panel-kicker">REGISTER</p><h2>粉銘柄を登録・更新</h2></div></div>
-                    <form class="management-form" method="post">
+                    <form class="management-form" method="post" autocomplete="off">
                         <div class="field-grid">
                             <label class="field">
                                 <span>種類</span>
-                                <select name="kind" required>
+                                <select name="kind" required autocomplete="off">
                                     <option value="">選択</option>
                                     <option value="薄力粉">薄力粉</option>
                                     <option value="中力粉">中力粉</option>
                                     <option value="強力粉">強力粉</option>
                                 </select>
                             </label>
-                            <label class="field"><span>番号</span><input type="number" min="1" step="1" name="number" placeholder="例：1" required></label>
-                            <label class="field field-wide"><span>銘柄名</span><input name="name" placeholder="例：バイオレット" required></label>
-                            <label class="field field-wide"><span>特徴・メモ</span><textarea name="feature" rows="4" placeholder="吸水、食感、使った印象など"></textarea></label>
+                            <label class="field"><span>番号</span><input type="number" min="1" step="1" name="number" autocomplete="off" placeholder="例：1" required></label>
+                            <label class="field field-wide"><span>銘柄名</span><input name="flour_name" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="例：バイオレット" required></label>
+                            <label class="field field-wide"><span>特徴・メモ</span><textarea name="feature" rows="4" autocomplete="off" spellcheck="false" placeholder="吸水、食感、使った印象など"></textarea></label>
                         </div>
                         <div class="info-box">同じ「種類＋番号」で保存すると、その銘柄の名前と特徴を更新します。</div>
                         <div class="form-actions"><button class="primary-button" type="submit">保存する</button></div>
