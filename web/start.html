@@ -36,7 +36,7 @@
                                 <option value="">選択してください</option>
                                 {% for recipe in recipes %}
                                 <option value="{{ recipe['id'] }}" {% if request.form.get('recipe_id') == recipe['id']|string %}selected{% endif %}>
-                                    No.{{ recipe['id'] }} / 加水率 {{ recipe['hydration'] }}%
+                                    No.{{ recipe['id'] }}
                                 </option>
                                 {% endfor %}
                             </select>
