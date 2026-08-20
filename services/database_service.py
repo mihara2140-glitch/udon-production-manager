@@ -1,4 +1,5 @@
 import csv
+import re
 import sqlite3
 from pathlib import Path
 
@@ -10,11 +11,69 @@ def get_connection():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 
+def parse_hours(value):
+    """熟成時間を時間単位の数値へ変換する。例: 1.5 / 1.5h / 90分。"""
+    text = str(value or "").strip().lower()
+    if not text:
+        return None
+
+    text = text.replace("時間", "h").replace("hours", "h").replace("hour", "h")
+
+    if ":" in text:
+        parts = text.split(":")
+        try:
+            return float(parts[0]) + float(parts[1]) / 60
+        except (ValueError, IndexError):
+            return None
+
+    hour_match = re.search(r"(-?\d+(?:\.\d+)?)\s*h", text)
+    minute_match = re.search(r"(-?\d+(?:\.\d+)?)\s*分", text)
+
+    if hour_match:
+        hours = float(hour_match.group(1))
+        if minute_match:
+            hours += float(minute_match.group(1)) / 60
+        return hours
+
+    if minute_match:
+        return float(minute_match.group(1)) / 60
+
+    number_match = re.search(r"-?\d+(?:\.\d+)?", text)
+    return float(number_match.group()) if number_match else None
+
+
+def parse_minutes(value):
+    """茹で時間を分単位の数値へ変換する。例: 12.5 / 12分30秒 / 12:30。"""
+    text = str(value or "").strip().lower()
+    if not text:
+        return None
+
+    if ":" in text:
+        parts = text.split(":")
+        try:
+            return float(parts[0]) + float(parts[1]) / 60
+        except (ValueError, IndexError):
+            return None
+
+    minute_match = re.search(r"(-?\d+(?:\.\d+)?)\s*分", text)
+    second_match = re.search(r"(-?\d+(?:\.\d+)?)\s*秒", text)
+
+    if minute_match:
+        minutes = float(minute_match.group(1))
+        if second_match:
+            minutes += float(second_match.group(1)) / 60
+        return minutes
+
+    number_match = re.search(r"-?\d+(?:\.\d+)?", text)
+    return float(number_match.group()) if number_match else None
+
+
 def initialize_database():
-    """Ver.21用DBを作成し、既存CSVがあれば初回だけ取り込む。"""
+    """DBを準備し、CSV移行とVer.22用アップグレードを行う。"""
     with get_connection() as conn:
         conn.executescript(
             """
@@ -53,6 +112,9 @@ def initialize_database():
                 room_maturation TEXT DEFAULT '',
                 cold_maturation TEXT DEFAULT '',
                 boil_time TEXT DEFAULT '',
+                room_maturation_hours REAL,
+                cold_maturation_hours REAL,
+                boil_minutes REAL,
                 total_score INTEGER,
                 smooth_score INTEGER,
                 chewy_score INTEGER,
@@ -67,6 +129,8 @@ def initialize_database():
             """
         )
 
+        _ensure_ver22_columns(conn)
+
         migrated = conn.execute(
             "SELECT value FROM app_meta WHERE key = 'csv_migrated'"
         ).fetchone()
@@ -76,6 +140,77 @@ def initialize_database():
             conn.execute(
                 "INSERT OR REPLACE INTO app_meta(key, value) VALUES('csv_migrated', '1')"
             )
+
+        _backfill_ver22_values(conn)
+        conn.execute(
+            "INSERT OR REPLACE INTO app_meta(key, value) VALUES('schema_version', '22')"
+        )
+
+
+def _ensure_ver22_columns(conn):
+    """Ver.21 DBを削除せず、分析用の数値列だけ追加する。"""
+    columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(seimen_records)").fetchall()
+    }
+
+    additions = {
+        "room_maturation_hours": "REAL",
+        "cold_maturation_hours": "REAL",
+        "boil_minutes": "REAL",
+    }
+
+    for column, data_type in additions.items():
+        if column not in columns:
+            conn.execute(
+                f"ALTER TABLE seimen_records ADD COLUMN {column} {data_type}"
+            )
+
+
+def _backfill_ver22_values(conn):
+    """Ver.21までの文字データから、分析用の数値を可能な範囲で作る。"""
+    rows = conn.execute(
+        """
+        SELECT id, room_maturation, cold_maturation, boil_time,
+               room_maturation_hours, cold_maturation_hours, boil_minutes,
+               smooth_score, chewy_score, firmness_score,
+               throat_score, sticking_score, sauce_score
+        FROM seimen_records
+        """
+    ).fetchall()
+
+    for row in rows:
+        room_hours = row["room_maturation_hours"]
+        cold_hours = row["cold_maturation_hours"]
+        boil_minutes = row["boil_minutes"]
+
+        if room_hours is None:
+            room_hours = parse_hours(row["room_maturation"])
+        if cold_hours is None:
+            cold_hours = parse_hours(row["cold_maturation"])
+        if boil_minutes is None:
+            boil_minutes = parse_minutes(row["boil_time"])
+
+        score_values = [
+            row["smooth_score"],
+            row["chewy_score"],
+            row["firmness_score"],
+            row["throat_score"],
+            row["sticking_score"],
+            row["sauce_score"],
+        ]
+        total_score = sum(score_values) if all(v is not None for v in score_values) else None
+
+        conn.execute(
+            """
+            UPDATE seimen_records
+            SET room_maturation_hours = ?,
+                cold_maturation_hours = ?,
+                boil_minutes = ?,
+                total_score = COALESCE(?, total_score)
+            WHERE id = ?
+            """,
+            (room_hours, cold_hours, boil_minutes, total_score, row["id"]),
+        )
 
 
 def _migrate_csv_files(conn):
@@ -178,14 +313,18 @@ def _migrate_seimen(conn):
         if not row[0] or not row[1]:
             continue
 
+        score_values = [_to_int(row[i]) for i in range(9, 15)]
+        auto_total = sum(score_values) if all(v is not None for v in score_values) else _to_int(row[8])
+
         conn.execute(
             """
             INSERT OR IGNORE INTO seimen_records(
                 id, recipe_id, record_date, temperature, humidity,
                 room_maturation, cold_maturation, boil_time,
+                room_maturation_hours, cold_maturation_hours, boil_minutes,
                 total_score, smooth_score, chewy_score, firmness_score,
                 throat_score, sticking_score, sauce_score, memo, state
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 int(row[0]),
@@ -196,13 +335,16 @@ def _migrate_seimen(conn):
                 row[5],
                 row[6],
                 row[7],
-                _to_int(row[8]),
-                _to_int(row[9]),
-                _to_int(row[10]),
-                _to_int(row[11]),
-                _to_int(row[12]),
-                _to_int(row[13]),
-                _to_int(row[14]),
+                parse_hours(row[5]),
+                parse_hours(row[6]),
+                parse_minutes(row[7]),
+                auto_total,
+                score_values[0],
+                score_values[1],
+                score_values[2],
+                score_values[3],
+                score_values[4],
+                score_values[5],
                 row[15],
                 row[16] or "完了",
             ),
