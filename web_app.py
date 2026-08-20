@@ -4,6 +4,7 @@ from flask import Flask, redirect, render_template, request, url_for
 
 from services.database_service import get_connection, initialize_database
 from services.record_service import get_record_detail, get_record_list
+from services.recipe_service import get_flour_list, get_flour_name, save_flour, save_recipe
 
 
 app = Flask(
@@ -24,6 +25,13 @@ def _optional_float(value, label):
         raise ValueError(f"{label}は数値で入力してください。") from error
 
 
+def _required_float(value, label):
+    number = _optional_float(value, label)
+    if number is None:
+        raise ValueError(f"{label}を入力してください。")
+    return number
+
+
 def _score(value, label):
     text = str(value or "").strip()
     if not text:
@@ -42,9 +50,38 @@ def load_recipes():
     with get_connection() as conn:
         return conn.execute(
             """
-            SELECT id, weak, medium, strong, hydration, salt_percent
+            SELECT id, weak_no, medium_no, strong_no,
+                   weak, medium, strong, hydration, salt_percent
             FROM recipes
             ORDER BY id DESC
+            """
+        ).fetchall()
+
+
+def load_recipe_cards():
+    cards = []
+    for row in load_recipes():
+        data = dict(row)
+        data["weak_name"] = get_flour_name("薄力粉", row["weak_no"])
+        data["medium_name"] = get_flour_name("中力粉", row["medium_no"])
+        data["strong_name"] = get_flour_name("強力粉", row["strong_no"])
+        cards.append(data)
+    return cards
+
+
+def load_all_flours():
+    initialize_database()
+    with get_connection() as conn:
+        return conn.execute(
+            """
+            SELECT kind, number, name, feature
+            FROM flours
+            ORDER BY CASE kind
+                WHEN '薄力粉' THEN 1
+                WHEN '中力粉' THEN 2
+                WHEN '強力粉' THEN 3
+                ELSE 4 END,
+                number
             """
         ).fetchall()
 
@@ -65,18 +102,15 @@ def load_working_records():
 
 
 def load_dashboard_data():
-    """Webダッシュボードに必要な情報をSQLiteから読み込む。"""
     initialize_database()
 
     with get_connection() as conn:
         working_count = conn.execute(
             "SELECT COUNT(*) FROM seimen_records WHERE state = '作業中'"
         ).fetchone()[0]
-
         completed_count = conn.execute(
             "SELECT COUNT(*) FROM seimen_records WHERE state = '完了'"
         ).fetchone()[0]
-
         latest = conn.execute(
             """
             SELECT s.total_score, r.hydration
@@ -86,25 +120,16 @@ def load_dashboard_data():
             LIMIT 1
             """
         ).fetchone()
-
         recent_records = conn.execute(
             """
-            SELECT
-                s.id,
-                s.record_date,
-                s.recipe_id,
-                s.temperature,
-                s.humidity,
-                s.total_score,
-                s.state,
-                r.hydration
+            SELECT s.id, s.record_date, s.recipe_id, s.temperature, s.humidity,
+                   s.total_score, s.state, r.hydration
             FROM seimen_records AS s
             JOIN recipes AS r ON r.id = s.recipe_id
             ORDER BY s.id DESC
             LIMIT 6
             """
         ).fetchall()
-
         scored_records = conn.execute(
             """
             SELECT id, total_score
@@ -122,12 +147,7 @@ def load_dashboard_data():
         score = max(0, min(60, record["total_score"]))
         top = 94 - (score / 60 * 88)
         chart_points.append(
-            {
-                "id": record["id"],
-                "score": score,
-                "x": round(x, 2),
-                "top": round(top, 2),
-            }
+            {"id": record["id"], "score": score, "x": round(x, 2), "top": round(top, 2)}
         )
 
     return {
@@ -143,16 +163,12 @@ def load_dashboard_data():
 def _record_matches(record, search_type, keyword):
     if not keyword:
         return True
-
     if search_type == "seimen_no":
         return str(record["id"]) == keyword
-
     if search_type == "recipe_no":
         return str(record["recipe_id"]) == keyword
-
     if search_type == "date":
         return keyword in str(record["record_date"] or "")
-
     return True
 
 
@@ -168,10 +184,8 @@ def records():
     state = request.args.get("state", "すべて")
     selected = request.args.get("selected", "").strip()
 
-    all_records = get_record_list()
     visible_records = []
-
-    for record in all_records:
+    for record in get_record_list():
         if state != "すべて" and record["state"] != state:
             continue
         if not _record_matches(record, search_type, keyword):
@@ -197,6 +211,72 @@ def records():
     )
 
 
+@app.route("/recipes", methods=["GET", "POST"])
+def recipes():
+    error = None
+
+    if request.method == "POST":
+        try:
+            weak_no = int(request.form.get("weak_no", ""))
+            medium_no = int(request.form.get("medium_no", ""))
+            strong_no = int(request.form.get("strong_no", ""))
+            weak = _required_float(request.form.get("weak"), "薄力粉量")
+            medium = _required_float(request.form.get("medium"), "中力粉量")
+            strong = _required_float(request.form.get("strong"), "強力粉量")
+            hydration = _required_float(request.form.get("hydration"), "加水率")
+            salt_percent = _required_float(request.form.get("salt_percent"), "塩分濃度")
+
+            if min(weak, medium, strong) < 0:
+                raise ValueError("粉量は0以上で入力してください。")
+            if not 0 < hydration <= 100:
+                raise ValueError("加水率は0より大きく100以下で入力してください。")
+            if not 0 <= salt_percent <= 30:
+                raise ValueError("塩分濃度は0〜30%で入力してください。")
+
+            save_recipe(
+                weak_no, medium_no, strong_no,
+                weak, medium, strong, hydration, salt_percent,
+            )
+            return redirect(url_for("recipes"))
+        except (ValueError, TypeError) as exc:
+            error = str(exc)
+
+    return render_template(
+        "recipes.html",
+        recipes=load_recipe_cards(),
+        weak_flours=get_flour_list("薄力粉"),
+        medium_flours=get_flour_list("中力粉"),
+        strong_flours=get_flour_list("強力粉"),
+        error=error,
+    )
+
+
+@app.route("/flours", methods=["GET", "POST"])
+def flours():
+    error = None
+
+    if request.method == "POST":
+        try:
+            kind = request.form.get("kind", "").strip()
+            number = int(request.form.get("number", "").strip())
+            name = request.form.get("name", "").strip()
+            feature = request.form.get("feature", "").strip()
+
+            if kind not in {"薄力粉", "中力粉", "強力粉"}:
+                raise ValueError("粉の種類を選択してください。")
+            if number <= 0:
+                raise ValueError("番号は1以上で入力してください。")
+            if not name:
+                raise ValueError("銘柄名を入力してください。")
+
+            save_flour(kind, number, name, feature)
+            return redirect(url_for("flours"))
+        except (ValueError, TypeError) as exc:
+            error = str(exc)
+
+    return render_template("flours.html", flours=load_all_flours(), error=error)
+
+
 @app.route("/start", methods=["GET", "POST"])
 def start_seimen():
     error = None
@@ -213,17 +293,13 @@ def start_seimen():
 
             initialize_database()
             with get_connection() as conn:
-                recipe = conn.execute(
-                    "SELECT id FROM recipes WHERE id = ?", (recipe_id,)
-                ).fetchone()
+                recipe = conn.execute("SELECT id FROM recipes WHERE id = ?", (recipe_id,)).fetchone()
                 if recipe is None:
                     raise ValueError("指定した配合番号が見つかりません。")
-
                 conn.execute(
                     """
-                    INSERT INTO seimen_records(
-                        recipe_id, record_date, temperature, humidity, state
-                    ) VALUES (?, ?, ?, ?, '作業中')
+                    INSERT INTO seimen_records(recipe_id, record_date, temperature, humidity, state)
+                    VALUES (?, ?, ?, ?, '作業中')
                     """,
                     (recipe_id, record_date, temperature, humidity),
                 )
@@ -268,11 +344,7 @@ def finish_seimen():
                 "sauce": _score(request.form.get("sauce_score"), "タレとの相性"),
             }
             score_values = list(scores.values())
-            total_score = (
-                sum(score_values)
-                if all(value is not None for value in score_values)
-                else None
-            )
+            total_score = sum(score_values) if all(v is not None for v in score_values) else None
             memo = request.form.get("memo", "").strip()
 
             room_text = f"{room_hours:g}h" if room_hours is not None else ""
@@ -291,39 +363,17 @@ def finish_seimen():
                 conn.execute(
                     """
                     UPDATE seimen_records
-                    SET room_maturation = ?,
-                        cold_maturation = ?,
-                        boil_time = ?,
-                        room_maturation_hours = ?,
-                        cold_maturation_hours = ?,
-                        boil_minutes = ?,
-                        total_score = ?,
-                        smooth_score = ?,
-                        chewy_score = ?,
-                        firmness_score = ?,
-                        throat_score = ?,
-                        sticking_score = ?,
-                        sauce_score = ?,
-                        memo = ?,
-                        state = '完了'
+                    SET room_maturation = ?, cold_maturation = ?, boil_time = ?,
+                        room_maturation_hours = ?, cold_maturation_hours = ?, boil_minutes = ?,
+                        total_score = ?, smooth_score = ?, chewy_score = ?, firmness_score = ?,
+                        throat_score = ?, sticking_score = ?, sauce_score = ?, memo = ?, state = '完了'
                     WHERE id = ?
                     """,
                     (
-                        room_text,
-                        cold_text,
-                        boil_text,
-                        room_hours,
-                        cold_hours,
-                        boil_minutes,
-                        total_score,
-                        scores["smooth"],
-                        scores["chewy"],
-                        scores["firmness"],
-                        scores["throat"],
-                        scores["sticking"],
-                        scores["sauce"],
-                        memo,
-                        record_id,
+                        room_text, cold_text, boil_text,
+                        room_hours, cold_hours, boil_minutes,
+                        total_score, scores["smooth"], scores["chewy"], scores["firmness"],
+                        scores["throat"], scores["sticking"], scores["sauce"], memo, record_id,
                     ),
                 )
 
@@ -331,11 +381,7 @@ def finish_seimen():
         except (ValueError, TypeError) as exc:
             error = str(exc)
 
-    return render_template(
-        "finish.html",
-        working_records=load_working_records(),
-        error=error,
-    )
+    return render_template("finish.html", working_records=load_working_records(), error=error)
 
 
 if __name__ == "__main__":
