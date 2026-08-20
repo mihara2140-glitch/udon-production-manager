@@ -8,7 +8,7 @@ def open_finish_window(parent):
     working_text = show_working_list()
 
     new_window = tk.Toplevel(parent)
-    new_window.title("製麺終了 - Ver.21")
+    new_window.title("製麺終了 - Ver.22")
     new_window.geometry("1000x720")
     new_window.minsize(900, 640)
 
@@ -28,7 +28,7 @@ def open_finish_window(parent):
     ttk.Label(title_area, text="製麺を終了して評価を記録", style="Title.TLabel").pack(anchor="w")
     ttk.Label(
         title_area,
-        text="熟成時間・茹で時間・食感評価を、実績としてまとめて記録します。",
+        text="時間は数値で保存し、総合評価は6項目の合計（最大60点）で自動計算します。",
     ).pack(anchor="w", pady=(4, 0))
 
     action_area = ttk.Frame(header)
@@ -55,30 +55,36 @@ def open_finish_window(parent):
     seimen_entry.grid(row=row, column=1, sticky="ew", pady=5)
 
     row += 1
-    ttk.Label(input_card, text="常温熟成時間").grid(row=row, column=0, sticky="w", pady=5)
+    ttk.Label(input_card, text="常温熟成（時間）").grid(row=row, column=0, sticky="w", pady=5)
     room_maturation_entry = ttk.Entry(input_card, width=16)
     room_maturation_entry.grid(row=row, column=1, sticky="ew", pady=5)
 
     row += 1
-    ttk.Label(input_card, text="冷蔵熟成時間").grid(row=row, column=0, sticky="w", pady=5)
+    ttk.Label(input_card, text="冷蔵熟成（時間）").grid(row=row, column=0, sticky="w", pady=5)
     cold_maturation_entry = ttk.Entry(input_card, width=16)
     cold_maturation_entry.grid(row=row, column=1, sticky="ew", pady=5)
 
     row += 1
-    ttk.Label(input_card, text="茹で時間").grid(row=row, column=0, sticky="w", pady=5)
+    ttk.Label(input_card, text="茹で時間（分）").grid(row=row, column=0, sticky="w", pady=5)
     boil_entry = ttk.Entry(input_card, width=16)
     boil_entry.grid(row=row, column=1, sticky="ew", pady=5)
+
+    row += 1
+    ttk.Label(
+        input_card,
+        text="例：常温 1.5 / 冷蔵 16 / 茹で 12.5",
+        foreground="#555555",
+    ).grid(row=row, column=0, columnspan=2, sticky="w", pady=(0, 4))
 
     row += 1
     ttk.Separator(input_card).grid(row=row, column=0, columnspan=2, sticky="ew", pady=10)
 
     row += 1
-    ttk.Label(input_card, text="評価（1〜10）", style="Section.TLabel").grid(
+    ttk.Label(input_card, text="評価（各1〜10）", style="Section.TLabel").grid(
         row=row, column=0, columnspan=2, sticky="w", pady=(0, 5)
     )
 
     evaluation_labels = [
-        "総合評価",
         "ツル感",
         "モチ感",
         "コシ",
@@ -94,6 +100,14 @@ def open_finish_window(parent):
         spinbox = ttk.Spinbox(input_card, from_=1, to=10, width=8)
         spinbox.grid(row=row, column=1, sticky="w", pady=3)
         evaluation_entries[label] = spinbox
+
+    row += 1
+    ttk.Label(
+        input_card,
+        text="※ くっつきは10点ほど『くっつきにくく良好』として記録",
+        foreground="#555555",
+        wraplength=390,
+    ).grid(row=row, column=0, columnspan=2, sticky="w", pady=(5, 0))
 
     row += 1
     ttk.Label(input_card, text="感想・メモ", style="Section.TLabel").grid(
