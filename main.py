@@ -3,9 +3,10 @@ from tkinter import ttk
 
 from services.database_service import initialize_database
 
-# Ver.21では起動時にSQLite DBを準備し、初回だけ既存CSVを取り込む。
+# 起動時にSQLite DBを準備し、必要ならVer.22形式へ自動更新する。
 initialize_database()
 
+from screens.analysis import open_analysis_window
 from screens.data import open_data_window
 from screens.finish import open_finish_window
 from screens.flour import open_flour_window
@@ -18,9 +19,9 @@ from screens.start import open_start_window
 
 
 window = tk.Tk()
-window.title("製麺管理アプリ Ver.21")
-window.geometry("760x640")
-window.minsize(700, 580)
+window.title("製麺管理アプリ Ver.22")
+window.geometry("760x680")
+window.minsize(700, 620)
 
 style = ttk.Style(window)
 style.configure("AppTitle.TLabel", font=("Meiryo", 22, "bold"))
@@ -41,11 +42,11 @@ text_area.pack(side="left", fill="x", expand=True)
 ttk.Label(text_area, text="製麺管理アプリ", style="AppTitle.TLabel").pack(anchor="w")
 ttk.Label(
     text_area,
-    text="記録・配合・評価をSQLiteで管理し、製麺の再現性を高める。",
+    text="記録・配合・評価をSQLiteで管理し、過去データから製麺の傾向を見る。",
     style="Subtitle.TLabel",
 ).pack(anchor="w", pady=(3, 0))
 
-ttk.Label(header, text="Ver.21 / SQLite", font=("Meiryo", 10, "bold")).pack(
+ttk.Label(header, text="Ver.22 / Analysis", font=("Meiryo", 10, "bold")).pack(
     side="right", anchor="n", pady=7
 )
 
@@ -68,6 +69,23 @@ ttk.Button(
     style="Main.TButton",
     command=lambda: open_finish_window(window),
 ).grid(row=0, column=1, sticky="ew", padx=(7, 0), pady=4)
+
+# 分析
+analysis_frame = ttk.LabelFrame(root, text=" 分析 ", padding=14, style="Section.TLabelframe")
+analysis_frame.pack(fill="x", pady=(0, 14))
+analysis_frame.columnconfigure(0, weight=1)
+
+ttk.Button(
+    analysis_frame,
+    text="📊  製麺データを分析",
+    style="Main.TButton",
+    command=lambda: open_analysis_window(window),
+).grid(row=0, column=0, sticky="ew", pady=4)
+
+ttk.Label(
+    analysis_frame,
+    text="湿度×くっつき / 常温熟成×コシ / 加水率×総合評価 をグラフで確認",
+).grid(row=1, column=0, sticky="w", pady=(4, 0))
 
 # 記録
 record_frame = ttk.LabelFrame(root, text=" 記録を見る ", padding=14, style="Section.TLabelframe")
@@ -119,18 +137,6 @@ for index, (label, command) in enumerate(buttons):
         padx=5,
         pady=5,
     )
-
-analysis_frame = ttk.LabelFrame(root, text=" データ基盤 ", padding=14, style="Section.TLabelframe")
-analysis_frame.pack(fill="x", pady=(0, 14))
-
-ttk.Label(
-    analysis_frame,
-    text=(
-        "✓ SQLite移行済み　　次は pandas / matplotlib を使って、"
-        "加水率・湿度・熟成時間・評価の関係を分析します。"
-    ),
-    wraplength=650,
-).pack(anchor="w")
 
 footer = ttk.Frame(root)
 footer.pack(fill="x", pady=(6, 0))
