@@ -18,8 +18,8 @@
             </div>
 
             <nav class="nav-menu" aria-label="メインメニュー">
-                <a class="nav-item active" href="#dashboard">ダッシュボード</a>
-                <a class="nav-item" href="#start">製麺開始</a>
+                <a class="nav-item active" href="{{ url_for('dashboard') }}">ダッシュボード</a>
+                <a class="nav-item" href="{{ url_for('start_seimen') }}">製麺開始</a>
                 <a class="nav-item" href="#records">製麺記録</a>
                 <a class="nav-item" href="#recipes">配合管理</a>
                 <a class="nav-item" href="#flours">粉銘柄管理</a>
@@ -39,7 +39,7 @@
                     <h1>製麺ダッシュボード</h1>
                     <p class="header-copy">SQLiteに保存された実際の製麺データを表示しています。</p>
                 </div>
-                <button class="primary-button" type="button">＋ 製麺を開始</button>
+                <a class="primary-link" href="{{ url_for('start_seimen') }}">＋ 製麺を開始</a>
             </header>
 
             <section class="kpi-grid" aria-label="製麺状況">
@@ -142,18 +142,18 @@
                     </div>
 
                     <div class="quick-actions">
-                        <button type="button" class="quick-button">
+                        <a href="{{ url_for('start_seimen') }}" class="quick-button quick-link">
                             <span class="quick-title">製麺を開始</span>
-                            <span class="quick-copy">次のVerでWeb入力画面へ接続</span>
-                        </button>
-                        <button type="button" class="quick-button">
-                            <span class="quick-title">製麺を終了</span>
-                            <span class="quick-copy">熟成・評価の入力をWeb化予定</span>
-                        </button>
-                        <button type="button" class="quick-button" id="recipes">
+                            <span class="quick-copy">環境と配合を入力して作業中として保存</span>
+                        </a>
+                        <a href="{{ url_for('finish_seimen') }}" class="quick-button quick-link">
+                            <span class="quick-title">製麺を終了・評価</span>
+                            <span class="quick-copy">熟成・茹で時間・評価・メモを保存</span>
+                        </a>
+                        <a href="#recipes" class="quick-button quick-link" id="recipes">
                             <span class="quick-title">配合を確認</span>
-                            <span class="quick-copy">SQLiteの配合一覧へ接続予定</span>
-                        </button>
+                            <span class="quick-copy">次の段階で配合管理もWeb操作へ移行</span>
+                        </a>
                     </div>
                 </article>
             </section>
@@ -162,36 +162,50 @@
                 <div class="panel-header">
                     <div>
                         <p class="panel-kicker">ANALYSIS</p>
-                        <h2>分析機能</h2>
+                        <h2>最近の総合評価</h2>
                     </div>
-                    <button class="secondary-button" type="button">今後Webグラフへ接続</button>
+                    <span class="secondary-button">高い評価ほど上</span>
                 </div>
 
                 <div class="chart-layout">
-                    <div class="chart-box" aria-label="分析グラフの配置予定エリア">
-                        <div class="chart-y-label">評価</div>
-                        <div class="chart-area">
+                    <div class="chart-box" aria-label="最近の総合評価グラフ">
+                        <div class="chart-y-label">総合評価</div>
+                        <div class="chart-area real-chart">
                             <span class="grid-line line-1"></span>
                             <span class="grid-line line-2"></span>
                             <span class="grid-line line-3"></span>
-                            <span class="chart-dot dot-1"></span>
-                            <span class="chart-dot dot-2"></span>
-                            <span class="chart-dot dot-3"></span>
+                            <span class="chart-tick tick-60">60</span>
+                            <span class="chart-tick tick-45">45</span>
+                            <span class="chart-tick tick-30">30</span>
+                            <span class="chart-tick tick-15">15</span>
+                            <span class="chart-tick tick-0">0</span>
+
+                            {% for point in chart_points %}
+                            <span
+                                class="chart-point"
+                                style="left: {{ point['x'] }}%; top: {{ point['top'] }}%;"
+                                title="No.{{ point['id'] }}：{{ point['score'] }}/60"
+                            >
+                                <span class="chart-point-label">{{ point['score'] }}</span>
+                            </span>
+                            {% else %}
+                            <span class="chart-empty">評価済み記録が増えるとここに表示されます。</span>
+                            {% endfor %}
                         </div>
-                        <div class="chart-x-label">製麺条件</div>
+                        <div class="chart-x-label">古い記録 ← 製麺記録 → 新しい記録</div>
                     </div>
 
                     <div class="analysis-note">
-                        <p class="analysis-note-title">ここからの進化</p>
-                        <p>Tkinter版で作ったpandas・matplotlib分析を、ブラウザで使いやすい形に置き換えていきます。</p>
-                        <div class="note-chip">Python → Web 接続済み</div>
+                        <p class="analysis-note-title">Web版の現在地</p>
+                        <p>ダッシュボード表示だけでなく、製麺開始と製麺終了・評価もブラウザからSQLiteへ保存できる段階まで進みました。</p>
+                        <div class="note-chip">Web → Python → SQLite</div>
                     </div>
                 </div>
             </section>
 
             <section class="mobile-hint" id="flours">
-                <strong>現在のWeb版</strong>
-                <p>ダッシュボードの見た目＋SQLiteの読み取りまで接続済み。次は製麺開始フォームをWeb化します。</p>
+                <strong>次にWeb化するところ</strong>
+                <p>製麺記録の詳細・検索、配合管理、粉銘柄管理、分析画面を順番にWebへ移していきます。</p>
             </section>
         </main>
     </div>
