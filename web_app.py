@@ -1,4 +1,6 @@
-from flask import Flask, render_template
+from datetime import date
+
+from flask import Flask, redirect, render_template, request, url_for
 
 from services.database_service import get_connection, initialize_database
 
@@ -9,6 +11,56 @@ app = Flask(
     static_folder="web",
     static_url_path="/static",
 )
+
+
+def _optional_float(value, label):
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return float(text)
+    except ValueError as error:
+        raise ValueError(f"{label}は数値で入力してください。") from error
+
+
+def _score(value, label):
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        score = int(text)
+    except ValueError as error:
+        raise ValueError(f"{label}は1〜10の整数で入力してください。") from error
+    if not 1 <= score <= 10:
+        raise ValueError(f"{label}は1〜10で入力してください。")
+    return score
+
+
+def load_recipes():
+    initialize_database()
+    with get_connection() as conn:
+        return conn.execute(
+            """
+            SELECT id, weak, medium, strong, hydration, salt_percent
+            FROM recipes
+            ORDER BY id DESC
+            """
+        ).fetchall()
+
+
+def load_working_records():
+    initialize_database()
+    with get_connection() as conn:
+        return conn.execute(
+            """
+            SELECT s.id, s.record_date, s.recipe_id, s.temperature, s.humidity,
+                   r.hydration
+            FROM seimen_records AS s
+            JOIN recipes AS r ON r.id = s.recipe_id
+            WHERE s.state = '作業中'
+            ORDER BY s.id DESC
+            """
+        ).fetchall()
 
 
 def load_dashboard_data():
@@ -26,14 +78,7 @@ def load_dashboard_data():
 
         latest = conn.execute(
             """
-            SELECT
-                s.id,
-                s.record_date,
-                s.recipe_id,
-                s.temperature,
-                s.humidity,
-                s.total_score,
-                r.hydration
+            SELECT s.total_score, r.hydration
             FROM seimen_records AS s
             JOIN recipes AS r ON r.id = s.recipe_id
             ORDER BY s.id DESC
@@ -59,18 +104,185 @@ def load_dashboard_data():
             """
         ).fetchall()
 
+        scored_records = conn.execute(
+            """
+            SELECT id, total_score
+            FROM seimen_records
+            WHERE state = '完了' AND total_score IS NOT NULL
+            ORDER BY id DESC
+            LIMIT 8
+            """
+        ).fetchall()[::-1]
+
+    chart_points = []
+    count = len(scored_records)
+    for index, record in enumerate(scored_records):
+        x = 50 if count == 1 else 5 + (90 * index / (count - 1))
+        score = max(0, min(60, record["total_score"]))
+        top = 94 - (score / 60 * 88)
+        chart_points.append(
+            {
+                "id": record["id"],
+                "score": score,
+                "x": round(x, 2),
+                "top": round(top, 2),
+            }
+        )
+
     return {
         "working_count": working_count,
         "completed_count": completed_count,
         "latest_score": latest["total_score"] if latest else None,
         "latest_hydration": latest["hydration"] if latest else None,
         "recent_records": recent_records,
+        "chart_points": chart_points,
     }
 
 
 @app.route("/")
 def dashboard():
     return render_template("dashboard.html", **load_dashboard_data())
+
+
+@app.route("/start", methods=["GET", "POST"])
+def start_seimen():
+    error = None
+
+    if request.method == "POST":
+        try:
+            recipe_id = int(request.form.get("recipe_id", "").strip())
+            record_date = request.form.get("record_date", "").strip()
+            temperature = _optional_float(request.form.get("temperature"), "気温")
+            humidity = _optional_float(request.form.get("humidity"), "湿度")
+
+            if humidity is not None and not 0 <= humidity <= 100:
+                raise ValueError("湿度は0〜100で入力してください。")
+
+            initialize_database()
+            with get_connection() as conn:
+                recipe = conn.execute(
+                    "SELECT id FROM recipes WHERE id = ?", (recipe_id,)
+                ).fetchone()
+                if recipe is None:
+                    raise ValueError("指定した配合番号が見つかりません。")
+
+                conn.execute(
+                    """
+                    INSERT INTO seimen_records(
+                        recipe_id, record_date, temperature, humidity, state
+                    ) VALUES (?, ?, ?, ?, '作業中')
+                    """,
+                    (recipe_id, record_date, temperature, humidity),
+                )
+
+            return redirect(url_for("dashboard"))
+        except (ValueError, TypeError) as exc:
+            error = str(exc)
+
+    return render_template(
+        "start.html",
+        recipes=load_recipes(),
+        today=date.today().isoformat(),
+        error=error,
+    )
+
+
+@app.route("/finish", methods=["GET", "POST"])
+def finish_seimen():
+    error = None
+
+    if request.method == "POST":
+        try:
+            record_id = int(request.form.get("record_id", "").strip())
+            room_hours = _optional_float(request.form.get("room_hours"), "常温熟成時間")
+            cold_hours = _optional_float(request.form.get("cold_hours"), "冷蔵熟成時間")
+            boil_minutes = _optional_float(request.form.get("boil_minutes"), "茹で時間")
+
+            for value, label in [
+                (room_hours, "常温熟成時間"),
+                (cold_hours, "冷蔵熟成時間"),
+                (boil_minutes, "茹で時間"),
+            ]:
+                if value is not None and value < 0:
+                    raise ValueError(f"{label}は0以上で入力してください。")
+
+            scores = {
+                "smooth": _score(request.form.get("smooth_score"), "ツル感"),
+                "chewy": _score(request.form.get("chewy_score"), "モチ感"),
+                "firmness": _score(request.form.get("firmness_score"), "コシ"),
+                "throat": _score(request.form.get("throat_score"), "のど越し"),
+                "sticking": _score(request.form.get("sticking_score"), "くっつき"),
+                "sauce": _score(request.form.get("sauce_score"), "タレとの相性"),
+            }
+            score_values = list(scores.values())
+            total_score = (
+                sum(score_values)
+                if all(value is not None for value in score_values)
+                else None
+            )
+            memo = request.form.get("memo", "").strip()
+
+            room_text = f"{room_hours:g}h" if room_hours is not None else ""
+            cold_text = f"{cold_hours:g}h" if cold_hours is not None else ""
+            boil_text = f"{boil_minutes:g}分" if boil_minutes is not None else ""
+
+            initialize_database()
+            with get_connection() as conn:
+                current = conn.execute(
+                    "SELECT id FROM seimen_records WHERE id = ? AND state = '作業中'",
+                    (record_id,),
+                ).fetchone()
+                if current is None:
+                    raise ValueError("指定した作業中の製麺記録が見つかりません。")
+
+                conn.execute(
+                    """
+                    UPDATE seimen_records
+                    SET room_maturation = ?,
+                        cold_maturation = ?,
+                        boil_time = ?,
+                        room_maturation_hours = ?,
+                        cold_maturation_hours = ?,
+                        boil_minutes = ?,
+                        total_score = ?,
+                        smooth_score = ?,
+                        chewy_score = ?,
+                        firmness_score = ?,
+                        throat_score = ?,
+                        sticking_score = ?,
+                        sauce_score = ?,
+                        memo = ?,
+                        state = '完了'
+                    WHERE id = ?
+                    """,
+                    (
+                        room_text,
+                        cold_text,
+                        boil_text,
+                        room_hours,
+                        cold_hours,
+                        boil_minutes,
+                        total_score,
+                        scores["smooth"],
+                        scores["chewy"],
+                        scores["firmness"],
+                        scores["throat"],
+                        scores["sticking"],
+                        scores["sauce"],
+                        memo,
+                        record_id,
+                    ),
+                )
+
+            return redirect(url_for("dashboard"))
+        except (ValueError, TypeError) as exc:
+            error = str(exc)
+
+    return render_template(
+        "finish.html",
+        working_records=load_working_records(),
+        error=error,
+    )
 
 
 if __name__ == "__main__":
