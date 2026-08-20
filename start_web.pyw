@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 import sys
@@ -51,9 +52,16 @@ def server_is_running():
 
 
 def start_server():
+    env = os.environ.copy()
+    # ローカル開発版だけ自動リロードを使う。公開先ではGunicornを使う。
+    env["FLASK_DEBUG"] = "1"
+    env["HOST"] = "127.0.0.1"
+    env["PORT"] = "5000"
+
     subprocess.Popen(
         [sys.executable, str(WEB_APP)],
         cwd=str(BASE_DIR),
+        env=env,
         creationflags=hidden_creation_flags(),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
