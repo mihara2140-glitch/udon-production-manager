@@ -10,7 +10,7 @@ def open_start_window(parent):
     recipe_text = show_recipe_list()
 
     new_window = tk.Toplevel(parent)
-    new_window.title("製麺開始 - Ver.20")
+    new_window.title("製麺開始 - Ver.21")
     new_window.geometry("900x560")
     new_window.minsize(820, 520)
 
