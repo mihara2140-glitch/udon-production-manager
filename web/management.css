@@ -1,0 +1,170 @@
+.management-page .main-content {
+    padding-bottom: 48px;
+}
+
+.management-grid {
+    display: grid;
+    grid-template-columns: minmax(340px, 0.72fr) minmax(0, 1.28fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.management-form-panel {
+    position: sticky;
+    top: 20px;
+}
+
+.management-form {
+    display: grid;
+    gap: 16px;
+}
+
+.management-form .field-grid {
+    gap: 14px;
+}
+
+.management-form .field input,
+.management-form .field select,
+.management-form .field textarea {
+    font-size: 14px;
+}
+
+.management-form .form-actions {
+    margin-top: 6px;
+}
+
+.management-list {
+    display: grid;
+    gap: 12px;
+}
+
+.recipe-card,
+.flour-card {
+    border: 1px solid #e1e6eb;
+    border-radius: 14px;
+    background: #fff;
+    padding: 16px;
+}
+
+.recipe-card-head,
+.flour-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.recipe-card-no,
+.flour-number {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 9px;
+    border-radius: 9px;
+    background: #171b20;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.recipe-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.meta-chip {
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: #fff7ed;
+    color: #9a4e03;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.recipe-flours {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 9px;
+}
+
+.recipe-flour-item {
+    padding: 11px;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.recipe-flour-item span,
+.recipe-flour-item small {
+    display: block;
+}
+
+.recipe-flour-item span {
+    color: #6b7280;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.recipe-flour-item strong {
+    display: block;
+    margin: 4px 0;
+    font-size: 15px;
+}
+
+.recipe-flour-item small {
+    color: #4b5563;
+    line-height: 1.4;
+}
+
+.flour-list-group {
+    display: grid;
+    gap: 14px;
+}
+
+.flour-kind-title {
+    margin: 4px 0 0;
+    font-size: 15px;
+}
+
+.flour-card-head h3 {
+    margin: 0;
+    font-size: 15px;
+}
+
+.flour-feature {
+    margin: 0;
+    color: #4b5563;
+    line-height: 1.7;
+    font-size: 13px;
+}
+
+.management-empty {
+    padding: 36px 18px;
+    text-align: center;
+    color: #6b7280;
+}
+
+.info-box {
+    padding: 12px 14px;
+    border-radius: 11px;
+    background: #f8fafc;
+    color: #4b5563;
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+@media (max-width: 1050px) {
+    .management-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .management-form-panel {
+        position: static;
+    }
+}
+
+@media (max-width: 650px) {
+    .recipe-flours {
+        grid-template-columns: 1fr;
+    }
+}
