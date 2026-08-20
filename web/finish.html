@@ -8,93 +8,30 @@
 </head>
 <body class="form-page">
     <main class="form-shell">
-        <div class="form-header">
-            <div>
-                <p class="eyebrow">FINISH & REVIEW</p>
-                <h1>製麺を終了・評価</h1>
-                <p class="header-copy">熟成・茹で時間と6項目の評価を保存します。総合点は60点満点で自動計算します。</p>
-            </div>
-            <a class="secondary-link" href="{{ url_for('dashboard') }}">ダッシュボードへ戻る</a>
-        </div>
-
-        {% if error %}
-        <div class="error-box">{{ error }}</div>
-        {% endif %}
-
+        <div class="form-header"><div><p class="eyebrow">FINISH & REVIEW</p><h1>製麺を終了・評価</h1><p class="header-copy">熟成・茹で時間と6項目の評価を保存します。総合点は60点満点で自動計算します。</p></div><a class="secondary-link" href="{{ url_for('dashboard') }}">ダッシュボードへ戻る</a></div>
+        {% if error %}<div class="error-box">{{ error }}</div>{% endif %}
         {% if working_records %}
         <section class="panel form-panel">
-            <form method="post">
+            <form method="post" autocomplete="off">
                 <div class="field-grid">
-                    <label class="field field-wide">
-                        <span>作業中の製麺</span>
-                        <select name="record_id" required>
-                            <option value="">選択してください</option>
-                            {% for record in working_records %}
-                            <option value="{{ record['id'] }}" {% if request.form.get('record_id') == record['id']|string %}selected{% endif %}>
-                                No.{{ record['id'] }} / {{ record['record_date'] or '日付なし' }} / 配合{{ record['recipe_id'] }} / 加水率{{ record['hydration'] }}%
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </label>
-
-                    <label class="field">
-                        <span>常温熟成（時間）</span>
-                        <input type="number" step="0.1" min="0" name="room_hours" value="{{ request.form.get('room_hours', '') }}" placeholder="例：1.5">
-                    </label>
-
-                    <label class="field">
-                        <span>冷蔵熟成（時間）</span>
-                        <input type="number" step="0.1" min="0" name="cold_hours" value="{{ request.form.get('cold_hours', '') }}" placeholder="例：16">
-                    </label>
-
-                    <label class="field">
-                        <span>茹で時間（分）</span>
-                        <input type="number" step="0.1" min="0" name="boil_minutes" value="{{ request.form.get('boil_minutes', '') }}" placeholder="例：14">
-                    </label>
+                    <label class="field field-wide"><span>作業中の製麺</span><select name="record_id" required autocomplete="off"><option value="">選択してください</option>{% for record in working_records %}<option value="{{ record['id'] }}" {% if request.form.get('record_id') == record['id']|string %}selected{% endif %}>No.{{ record['id'] }} / {{ record['record_date'] or '日付なし' }} / 配合{{ record['recipe_id'] }} / 加水率{{ record['hydration'] }}%</option>{% endfor %}</select></label>
+                    <label class="field"><span>常温熟成（時間）</span><input type="number" step="0.1" min="0" name="room_hours" autocomplete="off" value="{{ request.form.get('room_hours', '') }}" placeholder="例：1.5"></label>
+                    <label class="field"><span>冷蔵熟成（時間）</span><input type="number" step="0.1" min="0" name="cold_hours" autocomplete="off" value="{{ request.form.get('cold_hours', '') }}" placeholder="例：16"></label>
+                    <label class="field"><span>茹で時間（分）</span><input type="number" step="0.1" min="0" name="boil_minutes" autocomplete="off" value="{{ request.form.get('boil_minutes', '') }}" placeholder="例：14"></label>
                 </div>
-
                 <div class="score-section">
-                    <div>
-                        <p class="panel-kicker">SCORE</p>
-                        <h2>評価（各1〜10）</h2>
-                    </div>
+                    <div><p class="panel-kicker">SCORE</p><h2>評価（各1〜10）</h2></div>
                     <div class="score-grid">
-                        {% set score_fields = [
-                            ('smooth_score', 'ツル感'),
-                            ('chewy_score', 'モチ感'),
-                            ('firmness_score', 'コシ'),
-                            ('throat_score', 'のど越し'),
-                            ('sticking_score', 'くっつきにくさ'),
-                            ('sauce_score', 'タレとの相性')
-                        ] %}
-                        {% for name, label in score_fields %}
-                        <label class="field score-field">
-                            <span>{{ label }}</span>
-                            <input type="number" min="1" max="10" step="1" name="{{ name }}" value="{{ request.form.get(name, '') }}" placeholder="1〜10">
-                        </label>
-                        {% endfor %}
+                        {% set score_fields = [('smooth_score','ツル感'),('chewy_score','モチ感'),('firmness_score','コシ'),('throat_score','のど越し'),('sticking_score','くっつきにくさ'),('sauce_score','タレとの相性')] %}
+                        {% for name, label in score_fields %}<label class="field score-field"><span>{{ label }}</span><input type="number" min="1" max="10" step="1" name="{{ name }}" autocomplete="off" value="{{ request.form.get(name, '') }}" placeholder="1〜10"></label>{% endfor %}
                     </div>
                     <p class="form-note">※ くっつきは「10＝くっつきにくく良い状態」として入力します。</p>
                 </div>
-
-                <label class="field field-wide">
-                    <span>メモ・感想</span>
-                    <textarea name="memo" rows="6" placeholder="今回の良かった点、変えた点、次回の改善など">{{ request.form.get('memo', '') }}</textarea>
-                </label>
-
-                <div class="form-actions">
-                    <a class="secondary-link" href="{{ url_for('dashboard') }}">キャンセル</a>
-                    <button class="primary-button" type="submit">保存して製麺完了</button>
-                </div>
+                <label class="field field-wide"><span>メモ・感想</span><textarea name="memo" rows="6" autocomplete="off" spellcheck="false" placeholder="今回の良かった点、変えた点、次回の改善など">{{ request.form.get('memo', '') }}</textarea></label>
+                <div class="form-actions"><a class="secondary-link" href="{{ url_for('dashboard') }}">キャンセル</a><button class="primary-button" type="submit">保存して製麺完了</button></div>
             </form>
         </section>
-        {% else %}
-        <section class="panel empty-state">
-            <h2>作業中の製麺はありません</h2>
-            <p>先に「製麺を開始」から記録を作成してください。</p>
-            <a class="primary-link" href="{{ url_for('start_seimen') }}">製麺を開始する</a>
-        </section>
-        {% endif %}
+        {% else %}<section class="panel empty-state"><h2>作業中の製麺はありません</h2><p>先に「製麺を開始」から記録を作成してください。</p><a class="primary-link" href="{{ url_for('start_seimen') }}">製麺を開始する</a></section>{% endif %}
     </main>
 </body>
 </html>
