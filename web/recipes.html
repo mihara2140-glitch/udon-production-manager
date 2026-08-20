@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配合管理 - 製麺管理アプリ</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='management.css') }}">
+</head>
+<body class="management-page">
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark">麺</div>
+                <div><p class="brand-name">製麺管理</p><p class="brand-sub">UDON MANAGER</p></div>
+            </div>
+            <nav class="nav-menu" aria-label="メインメニュー">
+                <a class="nav-item" href="{{ url_for('dashboard') }}">ダッシュボード</a>
+                <a class="nav-item" href="{{ url_for('start_seimen') }}">製麺開始</a>
+                <a class="nav-item" href="{{ url_for('records') }}">製麺記録</a>
+                <a class="nav-item active" href="{{ url_for('recipes') }}">配合管理</a>
+                <a class="nav-item" href="{{ url_for('flours') }}">粉銘柄管理</a>
+                <a class="nav-item" href="{{ url_for('dashboard') }}#analysis">データ分析</a>
+            </nav>
+            <div class="sidebar-footer"><p>Web Version</p><span>SQLite Connected</span></div>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header">
+                <div>
+                    <p class="eyebrow">RECIPES</p>
+                    <h1>配合管理</h1>
+                    <p class="header-copy">登録済みの配合を確認し、新しい配合を追加できます。</p>
+                </div>
+                <a class="secondary-link" href="{{ url_for('flours') }}">粉銘柄を管理</a>
+            </header>
+
+            {% if error %}<div class="error-box">{{ error }}</div>{% endif %}
+
+            <section class="management-grid">
+                <article class="panel management-form-panel">
+                    <div class="panel-header"><div><p class="panel-kicker">NEW RECIPE</p><h2>新しい配合を登録</h2></div></div>
+                    <form class="management-form" method="post">
+                        <div class="field-grid">
+                            <label class="field">
+                                <span>薄力粉</span>
+                                <select name="weak_no" required>
+                                    <option value="">選択</option>
+                                    {% for number, name in weak_flours %}<option value="{{ number }}">No.{{ number }} / {{ name }}</option>{% endfor %}
+                                </select>
+                            </label>
+                            <label class="field"><span>薄力粉量（g）</span><input type="number" step="0.1" min="0" name="weak" required></label>
+                            <label class="field">
+                                <span>中力粉</span>
+                                <select name="medium_no" required>
+                                    <option value="">選択</option>
+                                    {% for number, name in medium_flours %}<option value="{{ number }}">No.{{ number }} / {{ name }}</option>{% endfor %}
+                                </select>
+                            </label>
+                            <label class="field"><span>中力粉量（g）</span><input type="number" step="0.1" min="0" name="medium" required></label>
+                            <label class="field">
+                                <span>強力粉</span>
+                                <select name="strong_no" required>
+                                    <option value="">選択</option>
+                                    {% for number, name in strong_flours %}<option value="{{ number }}">No.{{ number }} / {{ name }}</option>{% endfor %}
+                                </select>
+                            </label>
+                            <label class="field"><span>強力粉量（g）</span><input type="number" step="0.1" min="0" name="strong" required></label>
+                            <label class="field"><span>加水率（%）</span><input type="number" step="0.1" min="0.1" max="100" name="hydration" required></label>
+                            <label class="field"><span>塩分濃度（%）</span><input type="number" step="0.1" min="0" max="30" name="salt_percent" required></label>
+                        </div>
+                        <div class="info-box">配合番号は保存時に自動で付きます。粉銘柄が無い場合は、先に「粉銘柄管理」から登録してください。</div>
+                        <div class="form-actions"><button class="primary-button" type="submit">配合を登録</button></div>
+                    </form>
+                </article>
+
+                <article class="panel">
+                    <div class="panel-header"><div><p class="panel-kicker">RECIPE LIST</p><h2>登録済み配合</h2></div><span class="text-link">{{ recipes|length }}件</span></div>
+                    <div class="management-list">
+                        {% for recipe in recipes %}
+                        <div class="recipe-card">
+                            <div class="recipe-card-head">
+                                <span class="recipe-card-no">No.{{ recipe['id'] }}</span>
+                                <div class="recipe-meta"><span class="meta-chip">加水 {{ recipe['hydration'] }}%</span><span class="meta-chip">塩分 {{ recipe['salt_percent'] }}%</span></div>
+                            </div>
+                            <div class="recipe-flours">
+                                <div class="recipe-flour-item"><span>薄力粉</span><strong>{{ recipe['weak'] }}g</strong><small>{{ recipe['weak_name'] }}</small></div>
+                                <div class="recipe-flour-item"><span>中力粉</span><strong>{{ recipe['medium'] }}g</strong><small>{{ recipe['medium_name'] }}</small></div>
+                                <div class="recipe-flour-item"><span>強力粉</span><strong>{{ recipe['strong'] }}g</strong><small>{{ recipe['strong_name'] }}</small></div>
+                            </div>
+                        </div>
+                        {% else %}<div class="management-empty">配合はまだ登録されていません。</div>{% endfor %}
+                    </div>
+                </article>
+            </section>
+        </main>
+    </div>
+</body>
+</html>
