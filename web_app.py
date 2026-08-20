@@ -1,6 +1,8 @@
+import hmac
+import os
 from datetime import date
 
-from flask import Flask, redirect, render_template, request, url_for
+from flask import Flask, redirect, render_template, request, session, url_for
 
 from services.database_service import get_connection, initialize_database
 from services.record_service import get_record_detail, get_record_list
@@ -13,6 +15,26 @@ app = Flask(
     static_folder="web",
     static_url_path="/static",
 )
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "local-development-secret-change-on-public")
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=os.environ.get("COOKIE_SECURE", "0") == "1",
+)
+
+APP_PASSWORD = os.environ.get("APP_PASSWORD", "").strip()
+
+
+@app.before_request
+def require_login_when_public():
+    """公開先でAPP_PASSWORDが設定されたときだけログインを必須にする。"""
+    if not APP_PASSWORD:
+        return None
+    if request.endpoint in {"login", "static"}:
+        return None
+    if session.get("authenticated"):
+        return None
+    return redirect(url_for("login"))
 
 
 def _optional_float(value, label):
@@ -172,6 +194,65 @@ def _record_matches(record, search_type, keyword):
     return True
 
 
+def _sort_records(records, sort_by):
+    """Web一覧でよく使う並び順に並べ替える。Noneは常に最後へ送る。"""
+    records = list(records)
+
+    if sort_by == "date_asc":
+        return sorted(
+            records,
+            key=lambda r: (not bool(r["record_date"]), r["record_date"] or "", r["id"]),
+        )
+    if sort_by == "score_desc":
+        return sorted(
+            records,
+            key=lambda r: (r["total_score"] is not None, r["total_score"] or 0),
+            reverse=True,
+        )
+    if sort_by == "score_asc":
+        return sorted(
+            records,
+            key=lambda r: (r["total_score"] is None, r["total_score"] or 0),
+        )
+    if sort_by == "hydration_desc":
+        return sorted(records, key=lambda r: r["hydration"], reverse=True)
+    if sort_by == "hydration_asc":
+        return sorted(records, key=lambda r: r["hydration"])
+    if sort_by == "salt_desc":
+        return sorted(records, key=lambda r: r["salt_percent"], reverse=True)
+    if sort_by == "salt_asc":
+        return sorted(records, key=lambda r: r["salt_percent"])
+
+    # 標準は新しい日付順。日付がない場合は最後へ。
+    return sorted(
+        records,
+        key=lambda r: (r["record_date"] or "", r["id"]),
+        reverse=True,
+    )
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if not APP_PASSWORD:
+        return redirect(url_for("dashboard"))
+
+    error = None
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        if hmac.compare_digest(password, APP_PASSWORD):
+            session["authenticated"] = True
+            return redirect(url_for("dashboard"))
+        error = "パスワードが違います。"
+
+    return render_template("login.html", error=error)
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
 @app.route("/")
 def dashboard():
     return render_template("dashboard.html", **load_dashboard_data())
@@ -182,6 +263,7 @@ def records():
     search_type = request.args.get("search_type", "seimen_no")
     keyword = request.args.get("keyword", "").strip()
     state = request.args.get("state", "すべて")
+    sort_by = request.args.get("sort", "date_desc")
     selected = request.args.get("selected", "").strip()
 
     visible_records = []
@@ -191,6 +273,8 @@ def records():
         if not _record_matches(record, search_type, keyword):
             continue
         visible_records.append(record)
+
+    visible_records = _sort_records(visible_records, sort_by)
 
     detail = None
     detail_error = None
@@ -208,6 +292,7 @@ def records():
         search_type=search_type,
         keyword=keyword,
         state=state,
+        sort_by=sort_by,
     )
 
 
@@ -234,8 +319,14 @@ def recipes():
                 raise ValueError("塩分濃度は0〜30%で入力してください。")
 
             save_recipe(
-                weak_no, medium_no, strong_no,
-                weak, medium, strong, hydration, salt_percent,
+                weak_no,
+                medium_no,
+                strong_no,
+                weak,
+                medium,
+                strong,
+                hydration,
+                salt_percent,
             )
             return redirect(url_for("recipes"))
         except (ValueError, TypeError) as exc:
@@ -259,7 +350,7 @@ def flours():
         try:
             kind = request.form.get("kind", "").strip()
             number = int(request.form.get("number", "").strip())
-            name = request.form.get("name", "").strip()
+            name = request.form.get("flour_name", request.form.get("name", "")).strip()
             feature = request.form.get("feature", "").strip()
 
             if kind not in {"薄力粉", "中力粉", "強力粉"}:
@@ -293,7 +384,9 @@ def start_seimen():
 
             initialize_database()
             with get_connection() as conn:
-                recipe = conn.execute("SELECT id FROM recipes WHERE id = ?", (recipe_id,)).fetchone()
+                recipe = conn.execute(
+                    "SELECT id FROM recipes WHERE id = ?", (recipe_id,)
+                ).fetchone()
                 if recipe is None:
                     raise ValueError("指定した配合番号が見つかりません。")
                 conn.execute(
@@ -370,10 +463,21 @@ def finish_seimen():
                     WHERE id = ?
                     """,
                     (
-                        room_text, cold_text, boil_text,
-                        room_hours, cold_hours, boil_minutes,
-                        total_score, scores["smooth"], scores["chewy"], scores["firmness"],
-                        scores["throat"], scores["sticking"], scores["sauce"], memo, record_id,
+                        room_text,
+                        cold_text,
+                        boil_text,
+                        room_hours,
+                        cold_hours,
+                        boil_minutes,
+                        total_score,
+                        scores["smooth"],
+                        scores["chewy"],
+                        scores["firmness"],
+                        scores["throat"],
+                        scores["sticking"],
+                        scores["sauce"],
+                        memo,
+                        record_id,
                     ),
                 )
 
@@ -385,4 +489,7 @@ def finish_seimen():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="127.0.0.1", port=5000)
+    port = int(os.environ.get("PORT", "5000"))
+    host = os.environ.get("HOST", "0.0.0.0" if os.environ.get("PORT") else "127.0.0.1")
+    debug = os.environ.get("FLASK_DEBUG", "0") == "1"
+    app.run(debug=debug, host=host, port=port)
