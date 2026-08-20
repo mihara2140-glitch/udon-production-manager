@@ -14,7 +14,6 @@ from screens.flour_registeer import open_flour_register_window
 from screens.humidity import open_humidity_window
 from screens.recipe_calc import open_recipe_calc_window
 from screens.recipe_history import open_recipe_history_window
-from screens.recipe_search import open_recipe_search_window
 from screens.start import open_start_window
 
 
@@ -73,29 +72,22 @@ ttk.Button(
 # 記録
 record_frame = ttk.LabelFrame(root, text=" 記録を見る ", padding=14, style="Section.TLabelframe")
 record_frame.pack(fill="x", pady=(0, 14))
-for column in range(3):
+for column in range(2):
     record_frame.columnconfigure(column, weight=1)
 
 ttk.Button(
     record_frame,
-    text="製麺記録一覧",
+    text="製麺記録一覧・検索",
     style="Main.TButton",
     command=lambda: open_data_window(window),
-).grid(row=0, column=0, sticky="ew", padx=5, pady=4)
+).grid(row=0, column=0, sticky="ew", padx=(0, 7), pady=4)
 
 ttk.Button(
     record_frame,
     text="湿度70%以上",
     style="Sub.TButton",
     command=lambda: open_humidity_window(window),
-).grid(row=0, column=1, sticky="ew", padx=5, pady=4)
-
-ttk.Button(
-    record_frame,
-    text="配合から検索",
-    style="Sub.TButton",
-    command=lambda: open_recipe_search_window(window),
-).grid(row=0, column=2, sticky="ew", padx=5, pady=4)
+).grid(row=0, column=1, sticky="ew", padx=(7, 0), pady=4)
 
 # 分析
 analysis_frame = ttk.LabelFrame(root, text=" 分析 ", padding=14, style="Section.TLabelframe")
