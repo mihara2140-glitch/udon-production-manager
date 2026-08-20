@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>製麺管理アプリ - Web Prototype</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark">麺</div>
+                <div>
+                    <p class="brand-name">製麺管理</p>
+                    <p class="brand-sub">UDON MANAGER</p>
+                </div>
+            </div>
+
+            <nav class="nav-menu" aria-label="メインメニュー">
+                <a class="nav-item active" href="#dashboard">ダッシュボード</a>
+                <a class="nav-item" href="#start">製麺開始</a>
+                <a class="nav-item" href="#records">製麺記録</a>
+                <a class="nav-item" href="#recipes">配合管理</a>
+                <a class="nav-item" href="#flours">粉銘柄管理</a>
+                <a class="nav-item" href="#analysis">データ分析</a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <p>Web Prototype</p>
+                <span>Ver. 0.1</span>
+            </div>
+        </aside>
+
+        <main class="main-content" id="dashboard">
+            <header class="page-header">
+                <div>
+                    <p class="eyebrow">DASHBOARD</p>
+                    <h1>製麺ダッシュボード</h1>
+                    <p class="header-copy">今日の製麺状況と、最近の記録をひと目で確認できます。</p>
+                </div>
+                <button class="primary-button" type="button">＋ 製麺を開始</button>
+            </header>
+
+            <section class="kpi-grid" aria-label="製麺状況">
+                <article class="kpi-card">
+                    <p class="kpi-label">作業中</p>
+                    <div class="kpi-row">
+                        <strong>0</strong>
+                        <span>件</span>
+                    </div>
+                    <p class="kpi-note">現在進行中の製麺</p>
+                </article>
+
+                <article class="kpi-card">
+                    <p class="kpi-label">直近の評価</p>
+                    <div class="kpi-row">
+                        <strong>43</strong>
+                        <span>/ 60</span>
+                    </div>
+                    <p class="kpi-note">最新の完了記録</p>
+                </article>
+
+                <article class="kpi-card">
+                    <p class="kpi-label">直近の加水率</p>
+                    <div class="kpi-row">
+                        <strong>44.7</strong>
+                        <span>%</span>
+                    </div>
+                    <p class="kpi-note">使用した配合の加水率</p>
+                </article>
+
+                <article class="kpi-card">
+                    <p class="kpi-label">記録件数</p>
+                    <div class="kpi-row">
+                        <strong>3</strong>
+                        <span>件</span>
+                    </div>
+                    <p class="kpi-note">現在表示中のサンプル</p>
+                </article>
+            </section>
+
+            <section class="content-grid">
+                <article class="panel records-panel" id="records">
+                    <div class="panel-header">
+                        <div>
+                            <p class="panel-kicker">RECENT RECORDS</p>
+                            <h2>最近の製麺記録</h2>
+                        </div>
+                        <a href="#records" class="text-link">すべて見る</a>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>No.</th>
+                                    <th>日付</th>
+                                    <th>配合</th>
+                                    <th>加水率</th>
+                                    <th>気温 / 湿度</th>
+                                    <th>評価</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="record-no">18</span></td>
+                                    <td>2026-08-17</td>
+                                    <td>7</td>
+                                    <td>44.7%</td>
+                                    <td>29.0℃ / 72%</td>
+                                    <td><span class="score-badge">43 / 60</span></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="record-no">17</span></td>
+                                    <td>2026-08-12</td>
+                                    <td>7</td>
+                                    <td>44.7%</td>
+                                    <td>29.0℃ / 69%</td>
+                                    <td>－</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="record-no">2</span></td>
+                                    <td>2026-06-17</td>
+                                    <td>1</td>
+                                    <td>44.7%</td>
+                                    <td>30.0℃ / 70%</td>
+                                    <td>－</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+
+                <article class="panel quick-panel" id="start">
+                    <div class="panel-header">
+                        <div>
+                            <p class="panel-kicker">QUICK ACTION</p>
+                            <h2>よく使う操作</h2>
+                        </div>
+                    </div>
+
+                    <div class="quick-actions">
+                        <button type="button" class="quick-button">
+                            <span class="quick-title">製麺を開始</span>
+                            <span class="quick-copy">環境と配合を記録</span>
+                        </button>
+                        <button type="button" class="quick-button">
+                            <span class="quick-title">製麺を終了</span>
+                            <span class="quick-copy">熟成・評価を保存</span>
+                        </button>
+                        <button type="button" class="quick-button" id="recipes">
+                            <span class="quick-title">配合を確認</span>
+                            <span class="quick-copy">登録済みの配合一覧</span>
+                        </button>
+                    </div>
+                </article>
+            </section>
+
+            <section class="panel analysis-panel" id="analysis">
+                <div class="panel-header">
+                    <div>
+                        <p class="panel-kicker">ANALYSIS</p>
+                        <h2>湿度 × くっつき評価</h2>
+                    </div>
+                    <button class="secondary-button" type="button">分析画面を開く</button>
+                </div>
+
+                <div class="chart-layout">
+                    <div class="chart-box" aria-label="湿度とくっつき評価のサンプルグラフ">
+                        <div class="chart-y-label">くっつき評価</div>
+                        <div class="chart-area">
+                            <span class="grid-line line-1"></span>
+                            <span class="grid-line line-2"></span>
+                            <span class="grid-line line-3"></span>
+                            <span class="chart-dot dot-1" title="No.18"></span>
+                            <span class="chart-dot dot-2" title="No.17"></span>
+                            <span class="chart-dot dot-3" title="No.2"></span>
+                        </div>
+                        <div class="chart-x-label">湿度（%）</div>
+                    </div>
+
+                    <div class="analysis-note">
+                        <p class="analysis-note-title">見方</p>
+                        <p>記録が増えるほど、湿度と麺のくっつきやすさの傾向を比較しやすくなります。</p>
+                        <div class="note-chip">サンプル表示</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="mobile-hint" id="flours">
+                <strong>次の段階</strong>
+                <p>この静的画面にPythonとSQLiteを接続して、実際の製麺データを表示します。</p>
+            </section>
+        </main>
+    </div>
+</body>
+</html>
