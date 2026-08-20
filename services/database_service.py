@@ -1,13 +1,17 @@
 import csv
+import os
 import re
 import sqlite3
 from pathlib import Path
 
-# このファイルの場所を基準に、必ず製麺管理アプリ直下の data を参照する。
-# VS Code の作業フォルダや Google Drive の状態に左右されにくくするための指定。
+# ローカルでは従来どおり製麺管理アプリ直下の data を使う。
+# 公開先では UDON_DB_PATH を設定すると、永続ストレージ上のSQLiteへ切り替えられる。
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
-DB_FILE = DATA_DIR / "udon_manager.db"
+LEGACY_DATA_DIR = BASE_DIR / "data"
+DB_FILE = Path(
+    os.environ.get("UDON_DB_PATH", str(LEGACY_DATA_DIR / "udon_manager.db"))
+).expanduser()
+DATA_DIR = DB_FILE.parent
 
 
 def get_connection():
@@ -223,7 +227,7 @@ def _migrate_csv_files(conn):
 
 
 def _migrate_flours(conn):
-    path = DATA_DIR / "flour_master.csv"
+    path = LEGACY_DATA_DIR / "flour_master.csv"
     if not path.exists():
         return
 
@@ -244,7 +248,7 @@ def _migrate_flours(conn):
 
 
 def _migrate_recipes(conn):
-    path = DATA_DIR / "recipe.csv"
+    path = LEGACY_DATA_DIR / "recipe.csv"
     if not path.exists():
         return
 
@@ -301,7 +305,7 @@ def _to_int(value):
 
 
 def _migrate_seimen(conn):
-    path = DATA_DIR / "udon_note.csv"
+    path = LEGACY_DATA_DIR / "udon_note.csv"
     if not path.exists():
         return
 
