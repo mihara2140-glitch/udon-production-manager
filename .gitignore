@@ -11,7 +11,12 @@ __pycache__/
 # ZIP
 *.zip
 
-# SQLiteデータベース（今後用）
+# SQLiteデータベース
 *.db
 *.sqlite
 *.sqlite3
+
+# 公開環境の秘密情報
+.env
+.env.*
+!.env.example
