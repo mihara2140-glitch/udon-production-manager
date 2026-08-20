@@ -1,0 +1,16 @@
+# PythonAnywhere の WSGI configuration file に合わせて使う例。
+# YOUR_USERNAME と秘密情報は自分のPythonAnywhere側で設定し、GitHubには書かない。
+
+import os
+import sys
+
+project_home = "/home/YOUR_USERNAME/udon-production-manager"
+if project_home not in sys.path:
+    sys.path.insert(0, project_home)
+
+os.environ["APP_PASSWORD"] = "SET_A_PRIVATE_PASSWORD"
+os.environ["FLASK_SECRET_KEY"] = "SET_A_LONG_RANDOM_SECRET"
+os.environ["COOKIE_SECURE"] = "1"
+os.environ["UDON_DB_PATH"] = f"{project_home}/data/udon_manager.db"
+
+from web_app import app as application
