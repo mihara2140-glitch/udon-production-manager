@@ -42,6 +42,7 @@
                 <a class="nav-item" href="{{ url_for('records') }}">製麺記録</a>
                 <a class="nav-item" href="{{ url_for('recipes') }}">配合管理</a>
                 <a class="nav-item" href="{{ url_for('flours') }}">粉銘柄管理</a>
+                <a class="nav-item" href="{{ url_for('ai_flour_search') }}">AI粉検索</a>
                 <a class="nav-item" href="#analysis">データ分析</a>
             </nav>
             <div class="sidebar-footer"><p>Web Version</p><span>SQLite Connected</span></div>
@@ -81,6 +82,7 @@
                         <a href="{{ url_for('start_seimen') }}" class="quick-button quick-link"><span class="quick-title">製麺を開始</span><span class="quick-copy">環境と配合を入力して作業中として保存</span></a>
                         <a href="{{ url_for('finish_seimen') }}" class="quick-button quick-link"><span class="quick-title">製麺を終了・評価</span><span class="quick-copy">熟成・茹で時間・評価・メモを保存</span></a>
                         <a href="{{ url_for('records') }}" class="quick-button quick-link"><span class="quick-title">製麺記録を検索</span><span class="quick-copy">No.・配合・日付から過去記録を確認</span></a>
+                        <a href="{{ url_for('ai_flour_search') }}" class="quick-button quick-link"><span class="quick-title">AIで小麦粉を探す</span><span class="quick-copy">希望する特徴からうどん向け小麦粉を検索</span></a>
                     </div>
                 </article>
             </section>
