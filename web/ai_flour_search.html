@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI粉検索 - 製麺管理アプリ</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='management.css') }}">
+</head>
+<body class="management-page">
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark">麺</div>
+                <div><p class="brand-name">製麺管理</p><p class="brand-sub">UDON MANAGER</p></div>
+            </div>
+            <nav class="nav-menu" aria-label="メインメニュー">
+                <a class="nav-item" href="{{ url_for('dashboard') }}">ダッシュボード</a>
+                <a class="nav-item" href="{{ url_for('start_seimen') }}">製麺開始</a>
+                <a class="nav-item" href="{{ url_for('records') }}">製麺記録</a>
+                <a class="nav-item" href="{{ url_for('recipes') }}">配合管理</a>
+                <a class="nav-item" href="{{ url_for('flours') }}">粉銘柄管理</a>
+                <a class="nav-item active" href="{{ url_for('ai_flour_search') }}">AI粉検索</a>
+            </nav>
+            <div class="sidebar-footer"><p>AI Web Search</p><span>OpenAI Connected</span></div>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header">
+                <div>
+                    <p class="eyebrow">AI FLOUR SEARCH</p>
+                    <h1>条件から小麦粉を探す</h1>
+                    <p class="header-copy">欲しい特徴を文章で入力すると、AIがWeb検索してうどん向け候補を比較します。</p>
+                </div>
+                <a class="secondary-link" href="{{ url_for('flours') }}">粉銘柄管理へ</a>
+            </header>
+
+            {% if error %}<div class="error-box">{{ error }}</div>{% endif %}
+
+            <section class="management-grid">
+                <article class="panel management-form-panel">
+                    <div class="panel-header"><div><p class="panel-kicker">SEARCH</p><h2>欲しい小麦粉の特徴</h2></div></div>
+                    <form class="management-form" method="post" autocomplete="off">
+                        <label class="field field-wide">
+                            <span>検索条件</span>
+                            <textarea name="query" rows="7" required placeholder="例：コシが出やすい中力粉。うどん向けで、香りもあり、加水45%前後で扱いやすいもの。">{{ query }}</textarea>
+                        </label>
+                        <div class="info-box">メーカー・製粉会社など信頼できる情報を優先し、確認できない数値は断定しません。</div>
+                        <div class="form-actions"><button class="primary-button" type="submit">AIでおすすめを探す</button></div>
+                    </form>
+                </article>
+
+                <article class="panel">
+                    <div class="panel-header"><div><p class="panel-kicker">RESULT</p><h2>検索結果</h2></div></div>
+                    {% if result %}
+                        <div class="flour-card" style="white-space: pre-wrap; line-height: 1.8;">{{ result }}</div>
+                    {% else %}
+                        <div class="management-empty">条件を入力して検索すると、ここにおすすめ候補が表示されます。</div>
+                    {% endif %}
+                </article>
+            </section>
+        </main>
+    </div>
+</body>
+</html>
