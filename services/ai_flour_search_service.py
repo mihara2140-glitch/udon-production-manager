@@ -10,7 +10,9 @@ def search_flour_recommendations(query: str) -> str:
         raise ValueError("欲しい小麦粉の特徴を入力してください。")
 
     if not os.environ.get("OPENAI_API_KEY"):
-        raise RuntimeError("OPENAI_API_KEYが設定されていません。")
+        raise RuntimeError(
+            "AI検索は現在準備中です。検索ページは利用できますが、OpenAI APIはまだ有効化していません。"
+        )
 
     client = OpenAI()
     model = os.environ.get("OPENAI_MODEL", "gpt-5.4-mini")
