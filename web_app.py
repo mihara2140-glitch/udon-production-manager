@@ -4,6 +4,7 @@ from datetime import date
 
 from flask import Flask, redirect, render_template, request, session, url_for
 
+from services.ai_flour_search_service import search_flour_recommendations
 from services.database_service import get_connection, initialize_database
 from services.record_service import get_record_detail, get_record_list
 from services.recipe_service import get_flour_list, get_flour_name, save_flour, save_recipe
@@ -370,6 +371,27 @@ def flours():
             error = str(exc)
 
     return render_template("flours.html", flours=load_all_flours(), error=error)
+
+
+@app.route("/ai-flour-search", methods=["GET", "POST"])
+def ai_flour_search():
+    error = None
+    result = None
+    query = ""
+
+    if request.method == "POST":
+        query = request.form.get("query", "").strip()
+        try:
+            result = search_flour_recommendations(query)
+        except Exception as exc:
+            error = str(exc)
+
+    return render_template(
+        "ai_flour_search.html",
+        query=query,
+        result=result,
+        error=error,
+    )
 
 
 @app.route("/start", methods=["GET", "POST"])
