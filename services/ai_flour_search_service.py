@@ -1,7 +1,5 @@
 import os
 
-from openai import OpenAI
-
 
 def search_flour_recommendations(query: str) -> str:
     """希望する特徴をもとにWeb検索し、うどん向け小麦粉を提案する。"""
@@ -13,6 +11,15 @@ def search_flour_recommendations(query: str) -> str:
         raise RuntimeError(
             "AI検索は現在準備中です。検索ページは利用できますが、OpenAI APIはまだ有効化していません。"
         )
+
+    # OpenAI SDKはAI検索を実行するときだけ読み込む。
+    # これによりSDK側に問題があっても製麺管理サイト本体は起動できる。
+    try:
+        from openai import OpenAI
+    except ImportError as error:
+        raise RuntimeError(
+            "AI検索用ライブラリを読み込めませんでした。OpenAI APIを有効化するときに設定を確認してください。"
+        ) from error
 
     client = OpenAI()
     model = os.environ.get("OPENAI_MODEL", "gpt-5.4-mini")
