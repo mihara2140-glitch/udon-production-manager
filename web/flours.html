@@ -20,6 +20,7 @@
                 <a class="nav-item" href="{{ url_for('records') }}">製麺記録</a>
                 <a class="nav-item" href="{{ url_for('recipes') }}">配合管理</a>
                 <a class="nav-item active" href="{{ url_for('flours') }}">粉銘柄管理</a>
+                <a class="nav-item" href="{{ url_for('ai_flour_search') }}">AI粉検索</a>
                 <a class="nav-item" href="{{ url_for('dashboard') }}#analysis">データ分析</a>
             </nav>
             <div class="sidebar-footer"><p>Web Version</p><span>SQLite Connected</span></div>
@@ -32,7 +33,7 @@
                     <h1>粉銘柄管理</h1>
                     <p class="header-copy">薄力粉・中力粉・強力粉の銘柄と特徴を登録・更新できます。</p>
                 </div>
-                <a class="secondary-link" href="{{ url_for('recipes') }}">配合管理へ</a>
+                <a class="secondary-link" href="{{ url_for('ai_flour_search') }}">AIで粉を探す</a>
             </header>
 
             {% if error %}<div class="error-box">{{ error }}</div>{% endif %}
