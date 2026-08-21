@@ -13,7 +13,7 @@ def search_flour_recommendations(query: str) -> str:
         raise RuntimeError("OPENAI_API_KEYが設定されていません。")
 
     client = OpenAI()
-    model = os.environ.get("OPENAI_MODEL", "gpt-5.4")
+    model = os.environ.get("OPENAI_MODEL", "gpt-5.4-mini")
 
     prompt = f"""
 あなたは、うどん製麺用の小麦粉を調査するアシスタントです。
@@ -37,7 +37,9 @@ def search_flour_recommendations(query: str) -> str:
 
     response = client.responses.create(
         model=model,
-        tools=[{"type": "web_search_preview", "search_context_size": "medium"}],
+        tools=[{"type": "web_search", "search_context_size": "medium"}],
+        reasoning={"effort": "low"},
+        max_output_tokens=1800,
         input=prompt,
     )
     return response.output_text.strip()
