@@ -429,7 +429,7 @@ def start_seimen():
 
     return render_template(
         "start.html",
-        recipes=load_recipes(),
+        recipes=load_recipe_cards(),
         today=date.today().isoformat(),
         error=error,
     )
