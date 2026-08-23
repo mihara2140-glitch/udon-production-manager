@@ -5,25 +5,242 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>製麺開始 - 製麺管理アプリ</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .recipe-calculator {
+            margin-top: 22px;
+            padding: 18px;
+            border: 1px solid #fed7aa;
+            border-radius: 14px;
+            background: #fff7ed;
+        }
+        .recipe-calculator h2 {
+            margin: 0 0 6px;
+            font-size: 18px;
+        }
+        .calculator-copy {
+            margin: 0 0 16px;
+            color: #6b7280;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .calc-results {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 14px;
+        }
+        .calc-result {
+            padding: 12px;
+            border-radius: 11px;
+            background: #fff;
+            border: 1px solid #f3e8d6;
+        }
+        .calc-result span {
+            display: block;
+            margin-bottom: 4px;
+            color: #6b7280;
+            font-size: 11px;
+        }
+        .calc-result strong {
+            font-size: 17px;
+        }
+        .calc-result-wide {
+            grid-column: 1 / -1;
+        }
+        .recipe-brand-line {
+            color: #374151 !important;
+            font-weight: 700;
+        }
+        @media (max-width: 560px) {
+            .calc-results {
+                grid-template-columns: 1fr;
+            }
+            .calc-result-wide {
+                grid-column: auto;
+            }
+        }
+    </style>
 </head>
 <body class="form-page">
     <main class="form-shell">
-        <div class="form-header"><div><p class="eyebrow">START SEIMEN</p><h1>製麺を開始</h1><p class="header-copy">開始時点で分かる環境と配合を記録します。</p></div><a class="secondary-link" href="{{ url_for('dashboard') }}">ダッシュボードへ戻る</a></div>
+        <div class="form-header">
+            <div>
+                <p class="eyebrow">START SEIMEN</p>
+                <h1>製麺を開始</h1>
+                <p class="header-copy">開始時点で分かる環境と配合を記録します。</p>
+            </div>
+            <a class="secondary-link" href="{{ url_for('dashboard') }}">ダッシュボードへ戻る</a>
+        </div>
+
         {% if error %}<div class="error-box">{{ error }}</div>{% endif %}
+
         <div class="form-grid">
             <section class="panel form-panel">
                 <form method="post" autocomplete="off">
                     <div class="field-grid">
-                        <label class="field"><span>日付</span><input type="date" name="record_date" autocomplete="off" value="{{ request.form.get('record_date', today) }}" required></label>
-                        <label class="field"><span>配合番号</span><select name="recipe_id" required autocomplete="off"><option value="">選択してください</option>{% for recipe in recipes %}<option value="{{ recipe['id'] }}" {% if request.form.get('recipe_id') == recipe['id']|string %}selected{% endif %}>No.{{ recipe['id'] }}</option>{% endfor %}</select></label>
-                        <label class="field"><span>気温（℃）</span><input type="number" step="0.1" name="temperature" autocomplete="off" value="{{ request.form.get('temperature', '') }}" placeholder="例：28.5"></label>
-                        <label class="field"><span>湿度（%）</span><input type="number" step="0.1" min="0" max="100" name="humidity" autocomplete="off" value="{{ request.form.get('humidity', '') }}" placeholder="例：72"></label>
+                        <label class="field">
+                            <span>日付</span>
+                            <input type="date" name="record_date" autocomplete="off" value="{{ request.form.get('record_date', today) }}" required>
+                        </label>
+
+                        <label class="field">
+                            <span>配合番号</span>
+                            <select name="recipe_id" id="recipe_id" required autocomplete="off">
+                                <option value="">選択してください</option>
+                                {% for recipe in recipes %}
+                                <option value="{{ recipe['id'] }}" {% if request.form.get('recipe_id') == recipe['id']|string %}selected{% endif %}>
+                                    No.{{ recipe['id'] }} / {{ recipe['medium_name'] }}中心
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </label>
+
+                        <label class="field">
+                            <span>気温（℃）</span>
+                            <input type="number" step="0.1" name="temperature" autocomplete="off" value="{{ request.form.get('temperature', '') }}" placeholder="例：28.5">
+                        </label>
+
+                        <label class="field">
+                            <span>湿度（%）</span>
+                            <input type="number" step="0.1" min="0" max="100" name="humidity" autocomplete="off" value="{{ request.form.get('humidity', '') }}" placeholder="例：72">
+                        </label>
                     </div>
-                    <div class="form-actions"><a class="secondary-link" href="{{ url_for('dashboard') }}">キャンセル</a><button class="primary-button" type="submit">製麺を開始する</button></div>
+
+                    <div class="recipe-calculator">
+                        <h2>今回の配合量を計算</h2>
+                        <p class="calculator-copy">配合番号を選び、今回作りたい総粉量を入力すると、登録済みの比率のまま各粉・水・塩を自動換算します。</p>
+
+                        <label class="field">
+                            <span>作りたい総粉量（g）</span>
+                            <input type="number" id="target_flour" step="1" min="1" inputmode="decimal" placeholder="例：1500">
+                        </label>
+
+                        <div class="calc-results" id="calc_results">
+                            <div class="calc-result">
+                                <span id="calc_weak_label">薄力粉</span>
+                                <strong><span id="calc_weak">-</span> g</strong>
+                            </div>
+                            <div class="calc-result">
+                                <span id="calc_medium_label">中力粉</span>
+                                <strong><span id="calc_medium">-</span> g</strong>
+                            </div>
+                            <div class="calc-result">
+                                <span id="calc_strong_label">強力粉</span>
+                                <strong><span id="calc_strong">-</span> g</strong>
+                            </div>
+                            <div class="calc-result">
+                                <span>水</span>
+                                <strong><span id="calc_water">-</span> g</strong>
+                            </div>
+                            <div class="calc-result calc-result-wide">
+                                <span>塩</span>
+                                <strong><span id="calc_salt">-</span> g</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <a class="secondary-link" href="{{ url_for('dashboard') }}">キャンセル</a>
+                        <button class="primary-button" type="submit">製麺を開始する</button>
+                    </div>
                 </form>
             </section>
-            <aside class="panel help-panel"><p class="panel-kicker">RECIPE GUIDE</p><h2>配合一覧</h2><div class="recipe-list">{% for recipe in recipes %}<div class="recipe-item"><strong>No.{{ recipe['id'] }}</strong><span>薄 {{ recipe['weak'] }}g / 中 {{ recipe['medium'] }}g / 強 {{ recipe['strong'] }}g</span><span>加水率 {{ recipe['hydration'] }}% / 塩分 {{ recipe['salt_percent'] }}%</span></div>{% else %}<p>配合が登録されていません。</p>{% endfor %}</div></aside>
+
+            <aside class="panel help-panel">
+                <p class="panel-kicker">RECIPE GUIDE</p>
+                <h2>配合一覧</h2>
+                <div class="recipe-list">
+                    {% for recipe in recipes %}
+                    <div class="recipe-item">
+                        <strong>No.{{ recipe['id'] }}</strong>
+                        <span class="recipe-brand-line">薄力粉：{{ recipe['weak_name'] }} {{ recipe['weak'] }}g</span>
+                        <span class="recipe-brand-line">中力粉：{{ recipe['medium_name'] }} {{ recipe['medium'] }}g</span>
+                        <span class="recipe-brand-line">強力粉：{{ recipe['strong_name'] }} {{ recipe['strong'] }}g</span>
+                        <span>加水率 {{ recipe['hydration'] }}% / 塩分 {{ recipe['salt_percent'] }}%</span>
+                    </div>
+                    {% else %}
+                    <p>配合が登録されていません。</p>
+                    {% endfor %}
+                </div>
+            </aside>
         </div>
     </main>
+
+    <script>
+        const recipes = {{ recipes | tojson }};
+        const recipeSelect = document.getElementById("recipe_id");
+        const targetFlourInput = document.getElementById("target_flour");
+
+        const resultElements = {
+            weak: document.getElementById("calc_weak"),
+            medium: document.getElementById("calc_medium"),
+            strong: document.getElementById("calc_strong"),
+            water: document.getElementById("calc_water"),
+            salt: document.getElementById("calc_salt"),
+            weakLabel: document.getElementById("calc_weak_label"),
+            mediumLabel: document.getElementById("calc_medium_label"),
+            strongLabel: document.getElementById("calc_strong_label")
+        };
+
+        function formatAmount(value) {
+            return Number(value.toFixed(1)).toLocaleString("ja-JP", {
+                maximumFractionDigits: 1
+            });
+        }
+
+        function clearCalculation() {
+            resultElements.weak.textContent = "-";
+            resultElements.medium.textContent = "-";
+            resultElements.strong.textContent = "-";
+            resultElements.water.textContent = "-";
+            resultElements.salt.textContent = "-";
+            resultElements.weakLabel.textContent = "薄力粉";
+            resultElements.mediumLabel.textContent = "中力粉";
+            resultElements.strongLabel.textContent = "強力粉";
+        }
+
+        function calculateRecipe() {
+            const recipeId = Number(recipeSelect.value);
+            const targetFlour = Number(targetFlourInput.value);
+
+            if (!recipeId || !targetFlour || targetFlour <= 0) {
+                clearCalculation();
+                return;
+            }
+
+            const recipe = recipes.find(item => Number(item.id) === recipeId);
+            if (!recipe) {
+                clearCalculation();
+                return;
+            }
+
+            const originalTotal = Number(recipe.weak) + Number(recipe.medium) + Number(recipe.strong);
+            if (originalTotal <= 0) {
+                clearCalculation();
+                return;
+            }
+
+            const ratio = targetFlour / originalTotal;
+            const weak = Number(recipe.weak) * ratio;
+            const medium = Number(recipe.medium) * ratio;
+            const strong = Number(recipe.strong) * ratio;
+            const water = targetFlour * Number(recipe.hydration) / 100;
+            const salt = water * Number(recipe.salt_percent) / 100;
+
+            resultElements.weakLabel.textContent = `薄力粉：${recipe.weak_name}`;
+            resultElements.mediumLabel.textContent = `中力粉：${recipe.medium_name}`;
+            resultElements.strongLabel.textContent = `強力粉：${recipe.strong_name}`;
+
+            resultElements.weak.textContent = formatAmount(weak);
+            resultElements.medium.textContent = formatAmount(medium);
+            resultElements.strong.textContent = formatAmount(strong);
+            resultElements.water.textContent = formatAmount(water);
+            resultElements.salt.textContent = formatAmount(salt);
+        }
+
+        recipeSelect.addEventListener("change", calculateRecipe);
+        targetFlourInput.addEventListener("input", calculateRecipe);
+        calculateRecipe();
+    </script>
 </body>
 </html>
