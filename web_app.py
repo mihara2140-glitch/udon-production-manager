@@ -163,6 +163,64 @@ def load_dashboard_data():
             """
         ).fetchall()[::-1]
 
+        score_summary = conn.execute(
+            """
+            SELECT COUNT(*) AS scored_count,
+                   AVG(total_score) AS average_score,
+                   MAX(total_score) AS best_score
+            FROM seimen_records
+            WHERE state = '完了' AND total_score IS NOT NULL
+            """
+        ).fetchone()
+        best_record = conn.execute(
+            """
+            SELECT id, total_score
+            FROM seimen_records
+            WHERE state = '完了' AND total_score IS NOT NULL
+            ORDER BY total_score DESC, id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+        evaluation_average = conn.execute(
+            """
+            SELECT AVG(smooth_score) AS smooth_score,
+                   AVG(chewy_score) AS chewy_score,
+                   AVG(firmness_score) AS firmness_score,
+                   AVG(throat_score) AS throat_score,
+                   AVG(sticking_score) AS sticking_score,
+                   AVG(sauce_score) AS sauce_score
+            FROM seimen_records
+            WHERE state = '完了' AND total_score IS NOT NULL
+            """
+        ).fetchone()
+        hydration_rows = conn.execute(
+            """
+            SELECT r.hydration,
+                   COUNT(*) AS record_count,
+                   AVG(s.total_score) AS average_score,
+                   MAX(s.total_score) AS best_score
+            FROM seimen_records AS s
+            JOIN recipes AS r ON r.id = s.recipe_id
+            WHERE s.state = '完了' AND s.total_score IS NOT NULL
+            GROUP BY r.hydration
+            ORDER BY r.hydration
+            """
+        ).fetchall()
+        humidity_rows = conn.execute(
+            """
+            SELECT CASE WHEN humidity >= 70 THEN '70%以上' ELSE '70%未満' END AS humidity_band,
+                   COUNT(*) AS record_count,
+                   AVG(total_score) AS average_score,
+                   MAX(total_score) AS best_score
+            FROM seimen_records
+            WHERE state = '完了'
+              AND total_score IS NOT NULL
+              AND humidity IS NOT NULL
+            GROUP BY CASE WHEN humidity >= 70 THEN '70%以上' ELSE '70%未満' END
+            ORDER BY CASE humidity_band WHEN '70%未満' THEN 1 ELSE 2 END
+            """
+        ).fetchall()
+
     chart_points = []
     count = len(scored_records)
     for index, record in enumerate(scored_records):
@@ -173,6 +231,44 @@ def load_dashboard_data():
             {"id": record["id"], "score": score, "x": round(x, 2), "top": round(top, 2)}
         )
 
+    evaluation_labels = [
+        ("ツル感", "smooth_score"),
+        ("モチ感", "chewy_score"),
+        ("コシ", "firmness_score"),
+        ("のど越し", "throat_score"),
+        ("くっつき", "sticking_score"),
+        ("タレとの相性", "sauce_score"),
+    ]
+    evaluation_items = []
+    for label, key in evaluation_labels:
+        value = evaluation_average[key] if evaluation_average else None
+        evaluation_items.append(
+            {
+                "label": label,
+                "average": round(value, 1) if value is not None else None,
+                "width": round(value * 10, 1) if value is not None else 0,
+            }
+        )
+
+    hydration_analysis = [
+        {
+            "hydration": row["hydration"],
+            "record_count": row["record_count"],
+            "average_score": round(row["average_score"], 1),
+            "best_score": row["best_score"],
+        }
+        for row in hydration_rows
+    ]
+    humidity_analysis = [
+        {
+            "humidity_band": row["humidity_band"],
+            "record_count": row["record_count"],
+            "average_score": round(row["average_score"], 1),
+            "best_score": row["best_score"],
+        }
+        for row in humidity_rows
+    ]
+
     return {
         "working_count": working_count,
         "completed_count": completed_count,
@@ -180,6 +276,15 @@ def load_dashboard_data():
         "latest_hydration": latest["hydration"] if latest else None,
         "recent_records": recent_records,
         "chart_points": chart_points,
+        "scored_count": score_summary["scored_count"] if score_summary else 0,
+        "average_score": round(score_summary["average_score"], 1)
+        if score_summary and score_summary["average_score"] is not None
+        else None,
+        "best_score": score_summary["best_score"] if score_summary else None,
+        "best_record_id": best_record["id"] if best_record else None,
+        "evaluation_items": evaluation_items,
+        "hydration_analysis": hydration_analysis,
+        "humidity_analysis": humidity_analysis,
     }
 
 
