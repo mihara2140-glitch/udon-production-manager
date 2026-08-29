@@ -7,7 +7,13 @@ from flask import Flask, redirect, render_template, request, session, url_for
 from services.ai_flour_search_service import search_flour_recommendations
 from services.database_service import get_connection, initialize_database
 from services.record_service import get_record_detail, get_record_list
-from services.recipe_service import get_flour_list, get_flour_name, save_flour, save_recipe
+from services.recipe_service import (
+    get_flour_list,
+    get_flour_name,
+    get_recipe_components,
+    save_flour,
+    save_recipe,
+)
 
 
 app = Flask(
@@ -88,6 +94,19 @@ def load_recipe_cards():
         data["weak_name"] = get_flour_name("薄力粉", row["weak_no"])
         data["medium_name"] = get_flour_name("中力粉", row["medium_no"])
         data["strong_name"] = get_flour_name("強力粉", row["strong_no"])
+
+        components = get_recipe_components(row["id"])
+        data["components"] = components
+        data["total_flour"] = sum(float(item["amount"]) for item in components)
+
+        medium_names = [item["name"] for item in components if item["kind"] == "中力粉"]
+        if medium_names:
+            data["recipe_summary"] = " + ".join(medium_names)
+        elif components:
+            data["recipe_summary"] = " + ".join(item["name"] for item in components)
+        else:
+            data["recipe_summary"] = "配合詳細なし"
+
         cards.append(data)
     return cards
 

@@ -29,6 +29,9 @@
             gap: 10px;
             margin-top: 14px;
         }
+        .calc-flours {
+            display: contents;
+        }
         .calc-result {
             padding: 12px;
             border-radius: 11px;
@@ -50,6 +53,14 @@
         .recipe-brand-line {
             color: #374151 !important;
             font-weight: 700;
+        }
+        .recipe-component-kind {
+            display: inline-block;
+            min-width: 44px;
+            margin-right: 6px;
+            color: #6b7280;
+            font-size: 11px;
+            font-weight: 600;
         }
         @media (max-width: 560px) {
             .calc-results {
@@ -89,7 +100,7 @@
                                 <option value="">選択してください</option>
                                 {% for recipe in recipes %}
                                 <option value="{{ recipe['id'] }}" {% if request.form.get('recipe_id') == recipe['id']|string %}selected{% endif %}>
-                                    No.{{ recipe['id'] }} / {{ recipe['medium_name'] }}中心
+                                    No.{{ recipe['id'] }} / {{ recipe['recipe_summary'] }}
                                 </option>
                                 {% endfor %}
                             </select>
@@ -108,7 +119,7 @@
 
                     <div class="recipe-calculator">
                         <h2>今回の配合量を計算</h2>
-                        <p class="calculator-copy">配合番号を選び、今回作りたい総粉量を入力すると、登録済みの比率のまま各粉・水・塩を自動換算します。</p>
+                        <p class="calculator-copy">配合番号を選び、今回作りたい総粉量を入力すると、登録済みの比率のまま各銘柄・水・塩を自動換算します。中力粉を複数使う配合も銘柄ごとに表示します。</p>
 
                         <label class="field">
                             <span>作りたい総粉量（g）</span>
@@ -116,23 +127,12 @@
                         </label>
 
                         <div class="calc-results" id="calc_results">
-                            <div class="calc-result">
-                                <span id="calc_weak_label">薄力粉</span>
-                                <strong><span id="calc_weak">-</span> g</strong>
-                            </div>
-                            <div class="calc-result">
-                                <span id="calc_medium_label">中力粉</span>
-                                <strong><span id="calc_medium">-</span> g</strong>
-                            </div>
-                            <div class="calc-result">
-                                <span id="calc_strong_label">強力粉</span>
-                                <strong><span id="calc_strong">-</span> g</strong>
-                            </div>
+                            <div class="calc-flours" id="calc_flours"></div>
                             <div class="calc-result">
                                 <span>水</span>
                                 <strong><span id="calc_water">-</span> g</strong>
                             </div>
-                            <div class="calc-result calc-result-wide">
+                            <div class="calc-result">
                                 <span>塩</span>
                                 <strong><span id="calc_salt">-</span> g</strong>
                             </div>
@@ -153,10 +153,16 @@
                     {% for recipe in recipes %}
                     <div class="recipe-item">
                         <strong>No.{{ recipe['id'] }}</strong>
-                        <span class="recipe-brand-line">薄力粉：{{ recipe['weak_name'] }} {{ recipe['weak'] }}g</span>
-                        <span class="recipe-brand-line">中力粉：{{ recipe['medium_name'] }} {{ recipe['medium'] }}g</span>
-                        <span class="recipe-brand-line">強力粉：{{ recipe['strong_name'] }} {{ recipe['strong'] }}g</span>
-                        <span>加水率 {{ recipe['hydration'] }}% / 塩分 {{ recipe['salt_percent'] }}%</span>
+                        {% for component in recipe['components'] %}
+                        <span class="recipe-brand-line">
+                            <span class="recipe-component-kind">{{ component['kind'] }}</span>
+                            {{ component['name'] }} {{ component['amount'] }}g
+                        </span>
+                        {% endfor %}
+                        {% if not recipe['components'] %}
+                        <span class="recipe-brand-line">配合明細なし</span>
+                        {% endif %}
+                        <span>総粉量 {{ recipe['total_flour']|round(1) }}g / 加水率 {{ recipe['hydration'] }}% / 塩分 {{ recipe['salt_percent'] }}%</span>
                     </div>
                     {% else %}
                     <p>配合が登録されていません。</p>
@@ -170,17 +176,9 @@
         const recipes = {{ recipes | tojson }};
         const recipeSelect = document.getElementById("recipe_id");
         const targetFlourInput = document.getElementById("target_flour");
-
-        const resultElements = {
-            weak: document.getElementById("calc_weak"),
-            medium: document.getElementById("calc_medium"),
-            strong: document.getElementById("calc_strong"),
-            water: document.getElementById("calc_water"),
-            salt: document.getElementById("calc_salt"),
-            weakLabel: document.getElementById("calc_weak_label"),
-            mediumLabel: document.getElementById("calc_medium_label"),
-            strongLabel: document.getElementById("calc_strong_label")
-        };
+        const flourResults = document.getElementById("calc_flours");
+        const waterResult = document.getElementById("calc_water");
+        const saltResult = document.getElementById("calc_salt");
 
         function formatAmount(value) {
             return Number(value.toFixed(1)).toLocaleString("ja-JP", {
@@ -189,14 +187,24 @@
         }
 
         function clearCalculation() {
-            resultElements.weak.textContent = "-";
-            resultElements.medium.textContent = "-";
-            resultElements.strong.textContent = "-";
-            resultElements.water.textContent = "-";
-            resultElements.salt.textContent = "-";
-            resultElements.weakLabel.textContent = "薄力粉";
-            resultElements.mediumLabel.textContent = "中力粉";
-            resultElements.strongLabel.textContent = "強力粉";
+            flourResults.innerHTML = '<div class="calc-result calc-result-wide"><span>小麦粉</span><strong>-</strong></div>';
+            waterResult.textContent = "-";
+            saltResult.textContent = "-";
+        }
+
+        function makeFlourResult(component, amount) {
+            const item = document.createElement("div");
+            item.className = "calc-result";
+
+            const label = document.createElement("span");
+            label.textContent = `${component.kind}：${component.name}`;
+
+            const strong = document.createElement("strong");
+            strong.textContent = `${formatAmount(amount)} g`;
+
+            item.appendChild(label);
+            item.appendChild(strong);
+            return item;
         }
 
         function calculateRecipe() {
@@ -209,37 +217,36 @@
             }
 
             const recipe = recipes.find(item => Number(item.id) === recipeId);
-            if (!recipe) {
+            if (!recipe || !Array.isArray(recipe.components) || recipe.components.length === 0) {
                 clearCalculation();
                 return;
             }
 
-            const originalTotal = Number(recipe.weak) + Number(recipe.medium) + Number(recipe.strong);
+            const originalTotal = recipe.components.reduce(
+                (sum, component) => sum + Number(component.amount || 0),
+                0
+            );
             if (originalTotal <= 0) {
                 clearCalculation();
                 return;
             }
 
             const ratio = targetFlour / originalTotal;
-            const weak = Number(recipe.weak) * ratio;
-            const medium = Number(recipe.medium) * ratio;
-            const strong = Number(recipe.strong) * ratio;
+            flourResults.innerHTML = "";
+            recipe.components.forEach(component => {
+                const scaledAmount = Number(component.amount) * ratio;
+                flourResults.appendChild(makeFlourResult(component, scaledAmount));
+            });
+
             const water = targetFlour * Number(recipe.hydration) / 100;
             const salt = water * Number(recipe.salt_percent) / 100;
-
-            resultElements.weakLabel.textContent = `薄力粉：${recipe.weak_name}`;
-            resultElements.mediumLabel.textContent = `中力粉：${recipe.medium_name}`;
-            resultElements.strongLabel.textContent = `強力粉：${recipe.strong_name}`;
-
-            resultElements.weak.textContent = formatAmount(weak);
-            resultElements.medium.textContent = formatAmount(medium);
-            resultElements.strong.textContent = formatAmount(strong);
-            resultElements.water.textContent = formatAmount(water);
-            resultElements.salt.textContent = formatAmount(salt);
+            waterResult.textContent = formatAmount(water);
+            saltResult.textContent = formatAmount(salt);
         }
 
         recipeSelect.addEventListener("change", calculateRecipe);
         targetFlourInput.addEventListener("input", calculateRecipe);
+        clearCalculation();
         calculateRecipe();
     </script>
 </body>
