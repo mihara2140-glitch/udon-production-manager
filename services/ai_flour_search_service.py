@@ -1,5 +1,13 @@
 import os
 
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
+
+if load_dotenv is not None:
+    load_dotenv()
+
 
 def search_flour_recommendations(query: str) -> str:
     """希望する特徴をもとにWeb検索し、うどん向け小麦粉を提案する。"""
@@ -7,22 +15,25 @@ def search_flour_recommendations(query: str) -> str:
     if not query:
         raise ValueError("欲しい小麦粉の特徴を入力してください。")
 
-    if not os.environ.get("OPENAI_API_KEY"):
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not api_key:
         raise RuntimeError(
-            "AI検索は現在準備中です。検索ページは利用できますが、OpenAI APIはまだ有効化していません。"
+            "AI検索を使うには OPENAI_API_KEY の設定が必要です。"
+            "ローカルでは .env、PythonAnywhereでは公開環境の設定にAPIキーを追加してください。"
         )
 
-    # OpenAI SDKはAI検索を実行するときだけ読み込む。
-    # これによりSDK側に問題があっても製麺管理サイト本体は起動できる。
     try:
         from openai import OpenAI
     except ImportError as error:
         raise RuntimeError(
-            "AI検索用ライブラリを読み込めませんでした。OpenAI APIを有効化するときに設定を確認してください。"
+            "AI検索用ライブラリ openai を読み込めません。"
+            "python -m pip install -r requirements.txt を実行してください。"
         ) from error
 
-    client = OpenAI()
-    model = os.environ.get("OPENAI_MODEL", "gpt-5.4-mini")
+    # Web検索対応かつコストを抑えやすいモデルを既定にする。
+    # OPENAI_MODEL を設定すれば公開環境ごとに変更できる。
+    model = os.environ.get("OPENAI_MODEL", "gpt-5.6-luna").strip()
+    client = OpenAI(api_key=api_key, timeout=60.0)
 
     prompt = f"""
 あなたは、うどん製麺用の小麦粉を調査するアシスタントです。
@@ -40,15 +51,35 @@ def search_flour_recommendations(query: str) -> str:
 - 「なぜ今回の条件に合うか」を各候補に書く
 - メーカー公式・製粉会社・信頼できる販売情報を優先する
 - 推測と確認できた事実を混同しない
-- 最後に「比較まとめ」を短く付ける
 - 根拠が弱い商品を無理におすすめしない
+- 最後に「比較まとめ」と「主な参照元」を短く付ける
 """
 
-    response = client.responses.create(
-        model=model,
-        tools=[{"type": "web_search", "search_context_size": "medium"}],
-        reasoning={"effort": "low"},
-        max_output_tokens=1800,
-        input=prompt,
-    )
-    return response.output_text.strip()
+    try:
+        response = client.responses.create(
+            model=model,
+            tools=[
+                {
+                    "type": "web_search",
+                    "search_context_size": "medium",
+                    "user_location": {
+                        "type": "approximate",
+                        "country": "JP",
+                        "timezone": "Asia/Tokyo",
+                    },
+                }
+            ],
+            reasoning={"effort": "low"},
+            max_output_tokens=1800,
+            input=prompt,
+        )
+    except Exception as error:
+        raise RuntimeError(
+            f"AI検索に失敗しました。APIキー・利用上限・モデル設定を確認してください。詳細: {error}"
+        ) from error
+
+    result = (response.output_text or "").strip()
+    if not result:
+        raise RuntimeError("AI検索は完了しましたが、回答を取得できませんでした。")
+
+    return result
