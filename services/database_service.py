@@ -29,7 +29,6 @@ def normalize_record_date(value):
     if not text:
         return ""
 
-    # 2026/8/6, 2026-8-6, 2026.8.6 を受け付ける。
     match = re.fullmatch(r"(\d{4})[./-](\d{1,2})[./-](\d{1,2})", text)
     if match:
         try:
@@ -38,7 +37,6 @@ def normalize_record_date(value):
         except ValueError:
             return text
 
-    # 20260806 のような8桁表記も念のため対応。
     if re.fullmatch(r"\d{8}", text):
         try:
             return date_type(int(text[:4]), int(text[4:6]), int(text[6:8])).isoformat()
@@ -136,6 +134,20 @@ def initialize_database():
                 salt_percent REAL NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS recipe_flours (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                recipe_id INTEGER NOT NULL,
+                flour_id INTEGER NOT NULL,
+                amount REAL NOT NULL CHECK(amount > 0),
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY(recipe_id) REFERENCES recipes(id) ON DELETE CASCADE,
+                FOREIGN KEY(flour_id) REFERENCES flours(id),
+                UNIQUE(recipe_id, flour_id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_recipe_flours_recipe_id
+            ON recipe_flours(recipe_id);
+
             CREATE TABLE IF NOT EXISTS seimen_records (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 recipe_id INTEGER NOT NULL,
@@ -174,10 +186,11 @@ def initialize_database():
                 "INSERT OR REPLACE INTO app_meta(key, value) VALUES('csv_migrated', '1')"
             )
 
+        _backfill_recipe_flours(conn)
         _backfill_ver22_values(conn)
         _normalize_record_dates(conn)
         conn.execute(
-            "INSERT OR REPLACE INTO app_meta(key, value) VALUES('schema_version', '23')"
+            "INSERT OR REPLACE INTO app_meta(key, value) VALUES('schema_version', '24')"
         )
 
 
@@ -198,6 +211,55 @@ def _ensure_ver22_columns(conn):
             conn.execute(
                 f"ALTER TABLE seimen_records ADD COLUMN {column} {data_type}"
             )
+
+
+def _backfill_recipe_flours(conn):
+    """Ver.23までの固定3粉配合を、可変長の配合明細へ安全に移す。"""
+    rows = conn.execute(
+        """
+        SELECT id, weak_no, medium_no, strong_no, weak, medium, strong
+        FROM recipes
+        ORDER BY id
+        """
+    ).fetchall()
+
+    for row in rows:
+        existing = conn.execute(
+            "SELECT COUNT(*) FROM recipe_flours WHERE recipe_id = ?",
+            (row["id"],),
+        ).fetchone()[0]
+        if existing:
+            continue
+
+        legacy_components = [
+            ("薄力粉", row["weak_no"], row["weak"]),
+            ("中力粉", row["medium_no"], row["medium"]),
+            ("強力粉", row["strong_no"], row["strong"]),
+        ]
+
+        sort_order = 0
+        for kind, number, amount in legacy_components:
+            number = int(number or 0)
+            amount = float(amount or 0)
+            if number <= 0 or amount <= 0:
+                continue
+
+            flour = conn.execute(
+                "SELECT id FROM flours WHERE kind = ? AND number = ?",
+                (kind, number),
+            ).fetchone()
+            if flour is None:
+                continue
+
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO recipe_flours(
+                    recipe_id, flour_id, amount, sort_order
+                ) VALUES (?, ?, ?, ?)
+                """,
+                (row["id"], flour["id"], amount, sort_order),
+            )
+            sort_order += 1
 
 
 def _normalize_record_dates(conn):
